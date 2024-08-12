@@ -1,0 +1,218 @@
+cabal-version: 2.4
+name:          innovatio-founder
+version:       0.1.0.0
+author:        Manuel Padilla
+maintainer:    manuelpad@gmail.com
+build-type:    Simple
+copyright:     © 2024 Manuel Padilla
+license:       Apache-2.0
+license-files: LICENSE
+
+
+flag defer-plugin-errors
+  description:
+    Defer errors from the plugin, useful for things like Haddock that can't handle it.
+
+  default:     True
+  manual:      True
+
+common common-all
+  default-language:   Haskell2010
+  ghc-options:
+    -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
+    -fno-specialise -fexpose-all-unfoldings
+    -Wnoncanonical-monad-instances -Wall -Wincomplete-uni-patterns
+    -Wincomplete-record-updates -Wredundant-constraints -Widentities
+    -Wunused-matches -Wunused-binds -fno-warn-orphans
+    -Wno-unused-imports
+
+  if flag(defer-plugin-errors)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
+  default-extensions:
+    NoImplicitPrelude
+    BangPatterns
+    NumericUnderscores
+    OverloadedStrings
+
+  build-depends:
+    , aeson
+    , base               ^>=4.14.1.0
+    , base16-bytestring
+    , bech32
+    , bytestring
+    , containers
+    , directory
+    , filepath
+    , freer-extras
+    , freer-simple
+    , hex-text
+    , lens
+    , MissingH
+    , old-locale
+    , openapi3
+    , prettyprinter
+    , regex
+    , serialise
+    , split
+    , stm
+    , text
+    , time
+    , utf8-string
+    , base64-bytestring
+    , plutus-simple-model
+    , QuickCheck
+    , tasty
+    , tasty-quickcheck
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-ledger
+    , flat
+    , random
+  build-depends:    cardano-helpers
+
+common common-deps-test-suites
+  build-depends:
+      , base               ^>=4.14.1.0
+      , innovatio-founder
+      , plutus-simple-model
+      , QuickCheck
+      , quickcheck-instances
+      , tasty
+      , tasty-hunit
+      , tasty-quickcheck
+      , plutonomy
+      , plutus-contract
+      , plutus-ledger
+      , plutus-ledger-api
+      , plutus-tx
+      , plutus-script-utils
+      , plutus-ledger-constraints
+      , plutus-ledger-api
+      , plutus-tx-plugin
+      , plutus-core
+      , mtl
+      , transformers
+
+library
+  import:          common-all
+  hs-source-dirs:  src, tests
+  
+  exposed-modules:
+    Constants
+    Deploy
+    Campaign.Helpers
+    Campaign.Funds.OnChain
+    Campaign.Funds.Types
+    Campaign.OnChain
+    Campaign.Types
+    Others.PolicyFT
+    Others.PolicyNFT
+    Protocol.Helpers
+    Protocol.OnChain
+    Protocol.Types
+    Script.OnChain
+    Script.Types
+    Types
+    Generic.CLIHelpers
+    Generic.Constants
+    Generic.DeployHelpers
+    Generic.EmulatorHelpers
+    Generic.OffChainEval
+    Generic.OffChainEvalTesting
+    Generic.OffChainHelpers
+    Generic.OnChainHelpers
+    Generic.PABHelpers
+    Generic.Types
+
+  --------------------
+  -- Local components
+  --------------------
+  build-depends:
+    , cardano-addresses
+    , cardano-api
+    , cardano-binary
+    , cardano-crypto-class
+    , cardano-ledger-alonzo
+    , cardano-ledger-babbage
+    , cardano-ledger-core
+    , cardano-ledger-shelley
+    , cardano-node-emulator
+    , cardano-wallet-core
+    , data-default
+    , playground-common
+    , plutonomy
+    , plutus-chain-index-core
+    , plutus-contract
+    , plutus-core
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-ledger-constraints
+    , plutus-pab
+    , plutus-script-utils
+    , plutus-tx
+    , plutus-tx-constraints
+    , plutus-tx-plugin
+
+test-suite InnovatioFounderUnitTests
+  import:         common-all, common-deps-test-suites
+  type:           exitcode-stdio-1.0
+  main-is:        Main.hs
+  hs-source-dirs: tests/Tests/UnitTests, tests
+  other-modules: 
+                  Contracts.Protocol.Validator
+                  Contracts.Protocol.Data
+                  Contracts.Protocol.MintingPolicy
+                  Contracts.Campaign.Validator
+                  -- Contracts.Campaign.Data
+                  -- Contracts.Campaign.MintingPolicy
+                  -- Contracts.Campaign.Funds.Validator
+                  -- Contracts.Campaign.Funds.MintingPolicy
+                  -- Contracts.Campaign.Funds.Data
+                  TestUtils.Common
+                  TestUtils.Types
+                  TestUtils.Constants
+
+
+-- test-suite PropertyBasedTests
+--   import:         common-all, common-deps-test-suites
+--   type:           exitcode-stdio-1.0
+--   main-is:        Main.hs
+--   hs-source-dirs: tests/Tests/PropertyBasedTests, tests
+--  other-modules: 
+--     ArbitraryInstances
+--     TestUtils.Common
+--                   TestUtils.Types
+
+--     TestUtils.Constants
+--     Contracts.Protocol.Data
+--     Contracts.Campaign.Data
+--     Contracts.Campaign.Funds.Data
+--     TestUtils.InvestUnit
+--     TestUtils.SellOffer
+--     Helpers.Generic.Values
+--     Contracts.Protocol.Validator
+--     Contracts.Protocol.MintingPolicy
+--     Contracts.Campaign.MintingPolicy
+--     Contracts.Campaign.Validator
+--     Contracts.Campaign.Funds.Validator
+--     Contracts.Campaign.Funds.MintingPolicy
+--     Contracts.InvestUnit.Validator
+   
+-- test-suite Performance
+--   import:         common-all, common-deps-test-suites
+--   type:           exitcode-stdio-1.0
+--   main-is:        Main.hs
+--   hs-source-dirs: tests/Tests/Performance, tests
+--   other-modules:  PropertyTests
+--                   UnitTests
+--                   TestUtils.Common
+--                   TestUtils.Types
+--                   TestUtils.Constants
+
+executable deploy
+  import:         common-all
+  main-is:        deploy.hs
+  hs-source-dirs: app
+  build-depends:  innovatio-founder

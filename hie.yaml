@@ -1,0 +1,12 @@
+
+cradle:
+  cabal:
+
+    - path: "./src"
+      component: "lib:innovatio-founder"
+
+    - path: "./app"
+      component: "innovatio-founder:exe:deploy"
+
+    - path: "./tests"
+      component: "innovatio-founder:test:InnovatioFounderUnitTests"
