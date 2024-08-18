@@ -169,44 +169,44 @@ deploy_Protocol path protocolName protocolPolicyID_TxOutRef tokenEmergencyAdminP
     MonadIOClass.liftIO $ P.putStrLn $ "Protocol PolicyParams: " ++ P.show protocolPolicyParams
     _ <- MonadIOClass.liftIO $ DeployHelpers.deployMintingPolicy (path SystemFilePathPosix.</> protocolName) "ProtocolPolicyID" protocolPolicyID protocolPolicyID_CS
     ------------------------------
-    -- MonadIOClass.liftIO $ P.putStrLn "Generating 'Protocol Validator' Script..."
-    -- let protocolValidatorParams =
-    --         ProtocolT.ValidatorParams
-    --                 {
-    --                     ProtocolT.vpProtocolPolicyID_CS = protocolPolicyID_CS,
-    --                     ProtocolT.vpTokenEmergencyAdminPolicy_CS = tokenEmergencyAdminPolicy_CS
-    --                 }
-    --     protocolValidator = ProtocolOnChain.validator protocolValidatorParams
-    --     protocolValidator_Hash = OffChainHelpers.hashValidator protocolValidator
-    --     protocolValidator_Address = OffChainHelpers.addressValidator protocolValidator_Hash
-    -- MonadIOClass.liftIO $ P.putStrLn $ "Protocol ValidatorParams: " ++ P.show protocolValidatorParams
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidator (path SystemFilePathPosix.</> protocolName) "ProtocolValidator" protocolValidator
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "ProtocolValidator" protocolValidator_Hash
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "ProtocolValidator" protocolValidator_Address
-    -- ------------------------------
-    -- MonadIOClass.liftIO $ P.putStrLn "Generating 'Script PolicyID' Script..."
-    -- let scriptPolicyParams =
-    --         ScriptT.PolicyParams
-    --                 {
-    --                     ScriptT.ppProtocolPolicyID_CS = protocolPolicyID_CS
-    --                 }
-    --     scriptPolicyID = ScriptOnChain.policyID scriptPolicyParams
-    --     scriptPolicyID_CS = OffChainHelpers.getCurSymbolOfPolicy scriptPolicyID
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployMintingPolicy (path SystemFilePathPosix.</> protocolName) "ScriptPolicyID" scriptPolicyID scriptPolicyID_CS
-    -- ------------------------------
-    -- MonadIOClass.liftIO $ P.putStrLn "Generating 'Script Validator' Script..."
-    -- let scriptValidatorParams =
-    --         ScriptT.ValidatorParams
-    --                 {
-    --                     ScriptT.vpScriptPolicyID_CS = scriptPolicyID_CS,
-    --                     ScriptT.vpProtocolPolicyID_CS = protocolPolicyID_CS
-    --                 }
-    --     scriptValidator = ScriptOnChain.validator scriptValidatorParams
-    --     scriptValidator_Hash = OffChainHelpers.hashValidator scriptValidator
-    --     scriptValidator_Address = OffChainHelpers.addressValidator scriptValidator_Hash
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidator (path SystemFilePathPosix.</> protocolName) "ScriptValidator" scriptValidator
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "ScriptValidator" scriptValidator_Hash
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "ScriptValidator" scriptValidator_Address
+    MonadIOClass.liftIO $ P.putStrLn "Generating 'Protocol Validator' Script..."
+    let protocolValidatorParams =
+            ProtocolT.ValidatorParams
+                    {
+                        ProtocolT.vpProtocolPolicyID_CS = protocolPolicyID_CS,
+                        ProtocolT.vpTokenEmergencyAdminPolicy_CS = tokenEmergencyAdminPolicy_CS
+                    }
+        protocolValidator = ProtocolOnChain.validator protocolValidatorParams
+        protocolValidator_Hash = OffChainHelpers.hashValidator protocolValidator
+        protocolValidator_Address = OffChainHelpers.addressValidator protocolValidator_Hash
+    MonadIOClass.liftIO $ P.putStrLn $ "Protocol ValidatorParams: " ++ P.show protocolValidatorParams
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidator (path SystemFilePathPosix.</> protocolName) "ProtocolValidator" protocolValidator
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "ProtocolValidator" protocolValidator_Hash
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "ProtocolValidator" protocolValidator_Address
+    ------------------------------
+    MonadIOClass.liftIO $ P.putStrLn "Generating 'Script PolicyID' Script..."
+    let scriptPolicyParams =
+            ScriptT.PolicyParams
+                    {
+                        ScriptT.ppProtocolPolicyID_CS = protocolPolicyID_CS
+                    }
+        scriptPolicyID = ScriptOnChain.policyID scriptPolicyParams
+        scriptPolicyID_CS = OffChainHelpers.getCurSymbolOfPolicy scriptPolicyID
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployMintingPolicy (path SystemFilePathPosix.</> protocolName) "ScriptPolicyID" scriptPolicyID scriptPolicyID_CS
+    ------------------------------
+    MonadIOClass.liftIO $ P.putStrLn "Generating 'Script Validator' Script..."
+    let scriptValidatorParams =
+            ScriptT.ValidatorParams
+                    {
+                        ScriptT.vpScriptPolicyID_CS = scriptPolicyID_CS,
+                        ScriptT.vpProtocolPolicyID_CS = protocolPolicyID_CS
+                    }
+        scriptValidator = ScriptOnChain.validator scriptValidatorParams
+        scriptValidator_Hash = OffChainHelpers.hashValidator scriptValidator
+        scriptValidator_Address = OffChainHelpers.addressValidator scriptValidator_Hash
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidator (path SystemFilePathPosix.</> protocolName) "ScriptValidator" scriptValidator
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "ScriptValidator" scriptValidator_Hash
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "ScriptValidator" scriptValidator_Address
     ------------------------------
     MonadIOClass.liftIO $ P.putStrLn "Generating 'Campaign Validator' Script..."
     let campaignValidatorParams =
@@ -222,72 +222,72 @@ deploy_Protocol path protocolName protocolPolicyID_TxOutRef tokenEmergencyAdminP
     _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "CampaignValidator" campaignValidator_Hash
     _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "CampaignValidator" campaignValidator_Address
     ------------------------------
-    -- MonadIOClass.liftIO $ P.putStrLn "Generating 'Campaign Funds Validator' Script..."
-    -- let campaignFundsValidatorParams =
-    --         CampaignFundsT.ValidatorParams
-    --             {
-    --                 CampaignFundsT.vpProtocolPolicyID_CS = protocolPolicyID_CS,
-    --                 CampaignFundsT.vpTokenEmergencyAdminPolicy_CS = tokenEmergencyAdminPolicy_CS
-    --             }
-    --     campaignFundsValidator = CampaignFundsOnChain.validator campaignFundsValidatorParams
-    --     campaignFundsValidator_Hash = OffChainHelpers.hashValidator campaignFundsValidator
-    --     campaignFundsValidator_Address = OffChainHelpers.addressValidator campaignFundsValidator_Hash
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidator (path SystemFilePathPosix.</> protocolName) "CampaignFundsValidator" campaignFundsValidator
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "CampaignFundsValidator" campaignFundsValidator_Hash
-    -- _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "CampaignFundsValidator" campaignFundsValidator_Address
-    -- ------------------------------
-    -- protocolPolicyID_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolPolicyID.plutus")
-    -- protocolValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolValidator.plutus")
-    -- protocolValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolValidator-Testnet.addr")
-    -- protocolValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolValidator-Mainnet.addr")
-    -- ------------------------------
-    -- scriptPolicyID_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptPolicyID.plutus")
-    -- scriptValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptValidator.plutus")
-    -- scriptValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptValidator-Testnet.addr")
-    -- scriptValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptValidator-Mainnet.addr")
-    -- ------------------------------
-    -- campaignValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignValidator.plutus")
-    -- campaignValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignValidator-Testnet.addr")
-    -- campaignValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignValidator-Mainnet.addr")
-    -- ------------------------------
-    -- campaignFundsValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignFundsValidator.plutus")
-    -- campaignFundsValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignFundsValidator-Testnet.addr")
-    -- campaignFundsValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignFundsValidator-Mainnet.addr")
-    -- ------------------------------
-    -- MonadIOClass.liftIO $ P.putStrLn "Creating Protocol Deploy File..."
-    -- ------------------------------
-    -- let protocolDeployParams =
-    --         ProtocolDeployParams {
-    --             pdpProtocolVersion = T.protocolVersion,
-    --             pdpTokenEmergencyAdmin_CS = tokenEmergencyAdminPolicy_CS,
-    --             pdpProtocolPolicyID_Params = protocolPolicyParams,
-    --             pdpProtocolPolicyID_CborHex = OffChainHelpers.lazyByteStringToString protocolPolicyID_CborHex,
-    --             pdpProtocolPolicyID_CS = protocolPolicyID_CS,
-    --             pdpProtocolValidator_Params = protocolValidatorParams,
-    --             pdpProtocolValidator_Hash = protocolValidator_Hash,
-    --             pdpProtocolValidator_CborHex = OffChainHelpers.lazyByteStringToString protocolValidator_CborHex,
-    --             pdpProtocolValidator_AddressTestnet = OffChainHelpers.lazyByteStringToString protocolValidator_Address_Testnet,
-    --             pdpProtocolValidator_AddressMainnet = OffChainHelpers.lazyByteStringToString protocolValidator_Address_Mainnet,
-    --             pdpScriptPolicyID_Params          = scriptPolicyParams,
-    --             pdpScriptPolicyID_CborHex         = OffChainHelpers.lazyByteStringToString scriptPolicyID_CborHex,
-    --             pdpScriptPolicyID_CS              = scriptPolicyID_CS,
-    --             pdpScriptValidator_Params         = scriptValidatorParams,
-    --             pdpScriptValidator_Hash           = scriptValidator_Hash,
-    --             pdpScriptValidator_CborHex        = OffChainHelpers.lazyByteStringToString scriptValidator_CborHex,
-    --             pdpScriptValidator_AddressTestnet = OffChainHelpers.lazyByteStringToString scriptValidator_Address_Testnet,
-    --             pdpScriptValidator_AddressMainnet = OffChainHelpers.lazyByteStringToString scriptValidator_Address_Mainnet,
-    --             pdpCampaignValidator_Params          = campaignValidatorParams,
-    --             pdpCampaignValidator_Hash            = campaignValidator_Hash,
-    --             pdpCampaignValidator_CborHex         = OffChainHelpers.lazyByteStringToString campaignValidator_CborHex,
-    --             pdpCampaignValidator_AddressTestnet  = OffChainHelpers.lazyByteStringToString campaignValidator_Address_Testnet,
-    --             pdpCampaignValidator_AddressMainnet  = OffChainHelpers.lazyByteStringToString campaignValidator_Address_Mainnet ,
-    --             pdpCampaignFundsValidator_Params          = campaignFundsValidatorParams,
-    --             pdpCampaignFundsValidator_Hash            = campaignFundsValidator_Hash,
-    --             pdpCampaignFundsValidator_CborHex         = OffChainHelpers.lazyByteStringToString campaignFundsValidator_CborHex,
-    --             pdpCampaignFundsValidator_AddressTestnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Testnet,
-    --             pdpCampaignFundsValidator_AddressMainnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Mainnet 
-    --         }
-    -- OffChainHelpers.writeEncodedToFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolDeploy.json") protocolDeployParams
+    MonadIOClass.liftIO $ P.putStrLn "Generating 'Campaign Funds Validator' Script..."
+    let campaignFundsValidatorParams =
+            CampaignFundsT.ValidatorParams
+                {
+                    CampaignFundsT.vpProtocolPolicyID_CS = protocolPolicyID_CS,
+                    CampaignFundsT.vpTokenEmergencyAdminPolicy_CS = tokenEmergencyAdminPolicy_CS
+                }
+        campaignFundsValidator = CampaignFundsOnChain.validator campaignFundsValidatorParams
+        campaignFundsValidator_Hash = OffChainHelpers.hashValidator campaignFundsValidator
+        campaignFundsValidator_Address = OffChainHelpers.addressValidator campaignFundsValidator_Hash
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidator (path SystemFilePathPosix.</> protocolName) "CampaignFundsValidator" campaignFundsValidator
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "CampaignFundsValidator" campaignFundsValidator_Hash
+    _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "CampaignFundsValidator" campaignFundsValidator_Address
+    ------------------------------
+    protocolPolicyID_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolPolicyID.plutus")
+    protocolValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolValidator.plutus")
+    protocolValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolValidator-Testnet.addr")
+    protocolValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolValidator-Mainnet.addr")
+    ------------------------------
+    scriptPolicyID_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptPolicyID.plutus")
+    scriptValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptValidator.plutus")
+    scriptValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptValidator-Testnet.addr")
+    scriptValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ScriptValidator-Mainnet.addr")
+    ------------------------------
+    campaignValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignValidator.plutus")
+    campaignValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignValidator-Testnet.addr")
+    campaignValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignValidator-Mainnet.addr")
+    ------------------------------
+    campaignFundsValidator_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignFundsValidator.plutus")
+    campaignFundsValidator_Address_Testnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignFundsValidator-Testnet.addr")
+    campaignFundsValidator_Address_Mainnet <- OffChainHelpers.readFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "CampaignFundsValidator-Mainnet.addr")
+    ------------------------------
+    MonadIOClass.liftIO $ P.putStrLn "Creating Protocol Deploy File..."
+    ------------------------------
+    let protocolDeployParams =
+            ProtocolDeployParams {
+                pdpProtocolVersion = T.protocolVersion,
+                pdpTokenEmergencyAdmin_CS = tokenEmergencyAdminPolicy_CS,
+                pdpProtocolPolicyID_Params = protocolPolicyParams,
+                pdpProtocolPolicyID_CborHex = OffChainHelpers.lazyByteStringToString protocolPolicyID_CborHex,
+                pdpProtocolPolicyID_CS = protocolPolicyID_CS,
+                pdpProtocolValidator_Params = protocolValidatorParams,
+                pdpProtocolValidator_Hash = protocolValidator_Hash,
+                pdpProtocolValidator_CborHex = OffChainHelpers.lazyByteStringToString protocolValidator_CborHex,
+                pdpProtocolValidator_AddressTestnet = OffChainHelpers.lazyByteStringToString protocolValidator_Address_Testnet,
+                pdpProtocolValidator_AddressMainnet = OffChainHelpers.lazyByteStringToString protocolValidator_Address_Mainnet,
+                pdpScriptPolicyID_Params          = scriptPolicyParams,
+                pdpScriptPolicyID_CborHex         = OffChainHelpers.lazyByteStringToString scriptPolicyID_CborHex,
+                pdpScriptPolicyID_CS              = scriptPolicyID_CS,
+                pdpScriptValidator_Params         = scriptValidatorParams,
+                pdpScriptValidator_Hash           = scriptValidator_Hash,
+                pdpScriptValidator_CborHex        = OffChainHelpers.lazyByteStringToString scriptValidator_CborHex,
+                pdpScriptValidator_AddressTestnet = OffChainHelpers.lazyByteStringToString scriptValidator_Address_Testnet,
+                pdpScriptValidator_AddressMainnet = OffChainHelpers.lazyByteStringToString scriptValidator_Address_Mainnet,
+                pdpCampaignValidator_Params          = campaignValidatorParams,
+                pdpCampaignValidator_Hash            = campaignValidator_Hash,
+                pdpCampaignValidator_CborHex         = OffChainHelpers.lazyByteStringToString campaignValidator_CborHex,
+                pdpCampaignValidator_AddressTestnet  = OffChainHelpers.lazyByteStringToString campaignValidator_Address_Testnet,
+                pdpCampaignValidator_AddressMainnet  = OffChainHelpers.lazyByteStringToString campaignValidator_Address_Mainnet ,
+                pdpCampaignFundsValidator_Params          = campaignFundsValidatorParams,
+                pdpCampaignFundsValidator_Hash            = campaignFundsValidator_Hash,
+                pdpCampaignFundsValidator_CborHex         = OffChainHelpers.lazyByteStringToString campaignFundsValidator_CborHex,
+                pdpCampaignFundsValidator_AddressTestnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Testnet,
+                pdpCampaignFundsValidator_AddressMainnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Mainnet 
+            }
+    OffChainHelpers.writeEncodedToFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolDeploy.json") protocolDeployParams
     ------------------------------
     P.putStrLn $ "Saved Protocol Deploy in: " ++ P.show (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolDeploy.json")
     P.putStrLn "--------------------------------"
@@ -331,9 +331,6 @@ deploy_CampaignFactory path campaignFactoryName =
         P.putStrLn "--------------------------------"
         ------------------------------
 
-
-
-
 ------------------------------------------------------------------------------2
 
 deploy_PRE_script ::  P.FilePath -> P.String -> Bool -> PlutusTx.CompiledCode a -> P.IO ()
@@ -344,7 +341,8 @@ deploy_PRE_script filePath name swOverWrite code = do
             MonadIOClass.liftIO $ P.putStrLn $ "Reading '" ++ name ++ "' Pre-Script..."
         else do
             MonadIOClass.liftIO $ P.putStrLn $ "Generating '" ++ name ++ "' Pre-Script..."
-            let !optimizedCode = Plutonomy.optimizeUPLC code
+            -- let !optimizedCode = Plutonomy.optimizeUPLC code
+            let optimizedCode = code
             -- DeployHelpers.writeCompiledCodeToBinaryFile filePath optimizedCode
             DeployHelpers.writeCompiledCodeToJsonFile filePath optimizedCode
             
@@ -365,7 +363,7 @@ deploy_ProtocolFactory_And_CampaingFactory path name swOverWrite = do
     deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "ScriptPolicyID_PRE.plutus") "ScriptPolicyID" swOverWrite ScriptOnChain.policyIDCode
     deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "ScriptValidator_PRE.plutus") "ScriptValidator" swOverWrite ScriptOnChain.validatorCode
     deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignPolicy_PRE.plutus") "CampaignPolicy" swOverWrite CampaignOnChain.policyCode
-    deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignValidator_PRE.plutus") "CampaignValidator" True CampaignOnChain.validatorCode
+    deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignValidator_PRE.plutus") "CampaignValidator" swOverWrite CampaignOnChain.validatorCode
     deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignFundsPolicyID_PRE.plutus") "CampaignFundsPolicyID" swOverWrite CampaignFundsOnChain.policyIDCode
     deploy_PRE_script (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignFundsValidator_PRE.plutus") "CampaignFundsValidator" swOverWrite CampaignFundsOnChain.validatorCode
     ------------------------------

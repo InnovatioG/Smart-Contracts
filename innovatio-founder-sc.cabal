@@ -8,43 +8,112 @@ copyright:     © 2024 Manuel Padilla
 license:       Apache-2.0
 license-files: LICENSE
 
+---------------------------------
+flag no-use-serialize-onchain
+  description:
+    Use serialize data on chain code
+  default:     False
+  manual:      True
 
+---------------------------------
 flag defer-plugin-errors
   description:
     Defer errors from the plugin, useful for things like Haddock that can't handle it.
-
-  default:     True
+  default:     False
   manual:      True
 
-common common-all
-  default-language:   Haskell2010
-  ghc-options:
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
-    -fno-specialise -fexpose-all-unfoldings
-    -Wnoncanonical-monad-instances -Wall -Wincomplete-uni-patterns
-    -Wincomplete-record-updates -Wredundant-constraints -Widentities
-    -Wunused-matches -Wunused-binds -fno-warn-orphans
-    -Wno-unused-imports
+---------------------------------
+-- Define a flag for controlling UPLC dumping
+flag dump-uplc
+  description: Enable dumping of UPLC files
+  default:     False
+  manual:      True
 
+---------------------------------
+common warnings-config
+  ghc-options:
+    -Wall -Wnoncanonical-monad-instances -Wno-unused-packages 
+    -- -Wunused-packages
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wredundant-constraints -Widentities -Wunused-matches
+    -Wunused-binds -Wno-unused-imports -fno-warn-orphans
+
+---------------------------------
+common plutus-tx-config
+  ghc-options:
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
+    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
+    -fno-expose-all-unfoldings
+
+  ---------------------------------
+  -- DEFAULT GHC RECOMENDATION:
+  -- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx
+  ---------------------------------
+  -- DEFAULT Plutus Tx compiler options
+  -- https://plutus.cardano.intersectmbo.org/docs/delve-deeper/plutus-tx-compiler-options
+  ---------------------------------
+  -- -fplugin-opt PlutusTx.Plugin:no-conservative-optimisation
+  -- -fplugin-opt PlutusTx.Plugin:context-level=1
+  -- -fplugin-opt PlutusTx.Plugin:no-coverage-all
+  -- -fplugin-opt PlutusTx.Plugin:no-coverage-boolean
+  -- -fplugin-opt PlutusTx.Plugin:no-coverage-location
+  -- -fplugin-opt PlutusTx.Plugin:no-dump-compilation-trace
+  -- -fplugin-opt PlutusTx.Plugin:no-dump-pir
+  -- -fplugin-opt PlutusTx.Plugin:no-dump-tplc
+  -- -fplugin-opt PlutusTx.Plugin:no-dump-uplc
+  -- -fplugin-opt PlutusTx.Plugin:inline-constants
+  -- -fplugin-opt PlutusTx.Plugin:max-cse-iterations=4
+  -- -fplugin-opt PlutusTx.Plugin:max-simplifier-iterations-pir=12
+  -- -fplugin-opt PlutusTx.Plugin:max-simplifier-iterations-uplc=12
+  -- -fplugin-opt PlutusTx.Plugin:optimize
+  -- -fplugin-opt PlutusTx.Plugin:no-pedantic
+  -- -fplugin-opt PlutusTx.Plugin:no-preserve-logging
+  -- -fplugin-opt PlutusTx.Plugin:profile-all=None
+  -- -fplugin-opt PlutusTx.Plugin:relaxed-float-in
+  -- -fplugin-opt PlutusTx.Plugin:no-remove-trace
+  -- -fplugin-opt PlutusTx.Plugin:simplifier-beta
+  -- -fplugin-opt PlutusTx.Plugin:simplifier-inline
+  -- -fplugin-opt PlutusTx.Plugin:simplifier-remove-dead-bindings
+  -- -fplugin-opt PlutusTx.Plugin:simplifier-unwrap-cancel
+  -- -fplugin-opt PlutusTx.Plugin:strictify-bindings
+  -- -fplugin-opt PlutusTx.Plugin:target-version=1.1.0
+  -- -fplugin-opt PlutusTx.Plugin:typecheck
+  -- -fplugin-opt PlutusTx.Plugin:verbosity=Quiet
+  ---------------------------------
+  ghc-options:
+    -- -fplugin-opt PlutusTx.Plugin:verbosity=2 -fplugin-opt
+    -- PlutusTx.Plugin:no-optimize -fplugin-opt
+    -- PlutusTx.Plugin:dump-compilation-trace
+
+  ---------------------------------
   if flag(defer-plugin-errors)
     ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
-  default-extensions:
-    NoImplicitPrelude
-    BangPatterns
-    NumericUnderscores
-    OverloadedStrings
+  ---------------------------------
+  if flag(dump-uplc)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:dump-uplc
 
+  ---------------------------------
+  -- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx#extensions
+  ---------------------------------
+  default-extensions: Strict
+
+---------------------------------
+common common-all-deps-and-languange
+  default-language:   Haskell2010
   build-depends:
     , aeson
-    , base               ^>=4.14.1.0
+    , base
     , base16-bytestring
+    , base64-bytestring
     , bech32
     , bytestring
     , containers
+    , data-default
     , directory
     , filepath
+    , flat
     , freer-extras
     , freer-simple
     , hex-text
@@ -53,6 +122,7 @@ common common-all
     , old-locale
     , openapi3
     , prettyprinter
+    , random
     , regex
     , serialise
     , split
@@ -60,75 +130,15 @@ common common-all
     , text
     , time
     , utf8-string
-    , base64-bytestring
-    , plutus-simple-model
-    , QuickCheck
-    , tasty
-    , tasty-quickcheck
-    , plutus-ledger-api
-    , plutus-tx
-    , plutus-ledger
-    , flat
-    , random
-  build-depends:    cardano-helpers
 
-common common-deps-test-suites
-  build-depends:
-      , base               ^>=4.14.1.0
-      , innovatio-founder
-      , plutus-simple-model
-      , QuickCheck
-      , quickcheck-instances
-      , tasty
-      , tasty-hunit
-      , tasty-quickcheck
-      , plutonomy
-      , plutus-contract
-      , plutus-ledger
-      , plutus-ledger-api
-      , plutus-tx
-      , plutus-script-utils
-      , plutus-ledger-constraints
-      , plutus-ledger-api
-      , plutus-tx-plugin
-      , plutus-core
-      , mtl
-      , transformers
+  default-extensions:
+    NoImplicitPrelude
+    BangPatterns
+    NumericUnderscores
+    OverloadedStrings
 
-library
-  import:          common-all
-  hs-source-dirs:  src, tests
-  
-  exposed-modules:
-    Constants
-    Deploy
-    Campaign.Helpers
-    Campaign.Funds.OnChain
-    Campaign.Funds.Types
-    Campaign.OnChain
-    Campaign.Types
-    Others.PolicyFT
-    Others.PolicyNFT
-    Protocol.Helpers
-    Protocol.OnChain
-    Protocol.Types
-    Script.OnChain
-    Script.Types
-    Types
-    Generic.CLIHelpers
-    Generic.Constants
-    Generic.DeployHelpers
-    Generic.EmulatorHelpers
-    Generic.OffChainEval
-    Generic.OffChainEvalTesting
-    Generic.OffChainHelpers
-    Generic.OnChainHelpers
-    Generic.PABHelpers
-    Generic.Types
-
-  --------------------
-  -- Local components
-  --------------------
+---------------------------------
+common common-deps-main-library
   build-depends:
     , cardano-addresses
     , cardano-api
@@ -155,64 +165,95 @@ library
     , plutus-tx-constraints
     , plutus-tx-plugin
 
+---------------------------------
+common common-deps-test-suites
+  flags: +no-use-serialize-onchain
+  build-depends:
+    , base
+    , mtl
+    , plutonomy
+    , plutus-contract
+    , plutus-core
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-script-utils
+    , plutus-simple-model
+    , plutus-tx
+    , plutus-tx-plugin
+    , process
+    , QuickCheck
+    , quickcheck-instances
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , transformers
+
+---------------------------------
+library
+  import:
+    common-all-deps-and-languange, common-deps-main-library, plutus-tx-config, warnings-config
+
+  build-depends:   cardano-helpers
+  hs-source-dirs:  src
+  exposed-modules:
+    Campaign.Funds.OnChain
+    Campaign.Funds.Types
+    Campaign.Helpers
+    Campaign.OnChain
+    Campaign.Types
+    Constants
+    Deploy
+    Others.PolicyFT
+    Others.PolicyNFT
+    Protocol.Helpers
+    Protocol.OnChain
+    Protocol.Types
+    Script.OnChain
+    Script.Types
+    Types
+
+-- Generic.CLIHelpers
+-- Generic.Constants
+-- Generic.DeployHelpers
+-- Generic.EmulatorHelpers
+-- Generic.OffChainEval
+-- Generic.OffChainEvalTesting
+-- Generic.OffChainHelpers
+-- Generic.OnChainHelpers
+-- Generic.PABHelpers
+-- Generic.Types
+---------------------------------
 test-suite InnovatioFounderUnitTests
-  import:         common-all, common-deps-test-suites
+  import:
+    common-all-deps-and-languange,  common-deps-test-suites, plutus-tx-config, warnings-config
+
+  build-depends:  cardano-helpers
   type:           exitcode-stdio-1.0
   main-is:        Main.hs
-  hs-source-dirs: tests/Tests/UnitTests, tests
-  other-modules: 
-                  Contracts.Protocol.Validator
-                  Contracts.Protocol.Data
-                  Contracts.Protocol.MintingPolicy
-                  Contracts.Campaign.Validator
-                  -- Contracts.Campaign.Data
-                  -- Contracts.Campaign.MintingPolicy
-                  -- Contracts.Campaign.Funds.Validator
-                  -- Contracts.Campaign.Funds.MintingPolicy
-                  -- Contracts.Campaign.Funds.Data
-                  TestUtils.Common
-                  TestUtils.Types
-                  TestUtils.Constants
+  hs-source-dirs: tests/Tests/UnitTests tests
+  build-depends:  innovatio-founder
+  other-modules:
+    Contracts.Campaign.Transactions
+    Contracts.Campaign.Validator
+    Contracts.Protocol.Data
+    Contracts.Protocol.MintingPolicy
+    Contracts.Protocol.Validator
+    TestUtils.Common
+    TestUtils.Constants
+    TestUtils.Types
 
-
--- test-suite PropertyBasedTests
---   import:         common-all, common-deps-test-suites
---   type:           exitcode-stdio-1.0
---   main-is:        Main.hs
---   hs-source-dirs: tests/Tests/PropertyBasedTests, tests
---  other-modules: 
---     ArbitraryInstances
---     TestUtils.Common
---                   TestUtils.Types
-
---     TestUtils.Constants
---     Contracts.Protocol.Data
---     Contracts.Campaign.Data
---     Contracts.Campaign.Funds.Data
---     TestUtils.InvestUnit
---     TestUtils.SellOffer
---     Helpers.Generic.Values
---     Contracts.Protocol.Validator
---     Contracts.Protocol.MintingPolicy
---     Contracts.Campaign.MintingPolicy
---     Contracts.Campaign.Validator
---     Contracts.Campaign.Funds.Validator
---     Contracts.Campaign.Funds.MintingPolicy
---     Contracts.InvestUnit.Validator
-   
--- test-suite Performance
---   import:         common-all, common-deps-test-suites
---   type:           exitcode-stdio-1.0
---   main-is:        Main.hs
---   hs-source-dirs: tests/Tests/Performance, tests
---   other-modules:  PropertyTests
---                   UnitTests
---                   TestUtils.Common
---                   TestUtils.Types
---                   TestUtils.Constants
-
+-- Contracts.Campaign.Data
+-- Contracts.Campaign.MintingPolicy
+-- Contracts.Campaign.Funds.Validator
+-- Contracts.Campaign.Funds.MintingPolicy
+-- Contracts.Campaign.Funds.Data
+---------------------------------
 executable deploy
-  import:         common-all
+  import:
+    common-all-deps-and-languange, plutus-tx-config, warnings-config
+
   main-is:        deploy.hs
   hs-source-dirs: app
   build-depends:  innovatio-founder
+
+---------------------------------

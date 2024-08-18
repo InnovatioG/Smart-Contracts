@@ -21,6 +21,7 @@ import qualified Deploy
 import qualified Helpers.OffChain                 as OffChainHelpers
 import           TestUtils.Common                 as TestUtilsCommon
 import           TestUtils.Types                  as TestUtilsT
+import Contracts.Campaign.Transactions
 
 
 
@@ -47,6 +48,8 @@ main = do
                  , Tasty.testGroup
                      "Campaign Tests"
                      [ campaignValidatorTests tp
+
+                     , campaignTransactionsTests  tp
                     --  , campaignMPTests tp
                      ]
                 -- , Tasty.testGroup

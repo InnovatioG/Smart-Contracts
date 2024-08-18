@@ -31,3 +31,6 @@ cabal.project.local~
 **/_OLD/
 shell-1.1.0.nix
 .pre-commit-config.yaml
+
+
+**/export/

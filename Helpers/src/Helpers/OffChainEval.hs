@@ -78,6 +78,8 @@ import qualified Test.QuickCheck                                 as QC
 import qualified Test.Tasty.HUnit                                as Tasty
 import qualified Text.Printf                                     as TextPrintf (printf)
 import qualified Text.Read                                       as TextRead (readMaybe)
+import qualified Plutus.Model            as PlutusSimpleModel
+import qualified Test.Tasty              as Tasty
 
 --------------------------------------------------------------------------------2
 -- Import Internos
@@ -1098,9 +1100,11 @@ setInputs inputs sc =
   where
     txInInfos :: [LedgerApiV2.TxInInfo]
     txInInfos =
-        [ LedgerApiV2.TxInInfo (LedgerApiV2.TxOutRef someTxId i) txIn
+        [ LedgerApiV2.TxInInfo (LedgerApiV2.TxOutRef someTxId' i) txIn
         | (i, txIn) <- zip [0 ..] inputs
         ]
+
+    someTxId' = LedgerApiV2.TxId "0000000000000000000000000000000000000000000000000000000000000000"
 
 setInputsAndAddRedeemers :: [(LedgerApiV2.TxOut, LedgerApiV2.Redeemer)] -> LedgerApiV2.ScriptContext -> LedgerApiV2.ScriptContext
 setInputsAndAddRedeemers inputsWithRedeemer sc =
@@ -1394,5 +1398,14 @@ assertBudgetAndSize eval_err eval_size maxMem' maxCPU' maxSize' = do
     case sizeVal of
         Just size -> Tasty.assertBool (allValuesMsg ++ " Size usage exceeds limit.") (size < maxSize')
         _ -> return ()
+
+--------------------------------------------------------------------------------
+
+badCase :: forall a. P.String -> PlutusSimpleModel.Run a -> Tasty.TestTree
+badCase msg = goodCase msg . PlutusSimpleModel.mustFail
+
+goodCase :: forall a. P.String -> PlutusSimpleModel.Run a -> Tasty.TestTree
+goodCase = PlutusSimpleModel.testNoErrorsTrace  (PlutusSimpleModel.adaValue 1_000_000_000) PlutusSimpleModel.defaultBabbage
+
 
 --------------------------------------------------------------------------------

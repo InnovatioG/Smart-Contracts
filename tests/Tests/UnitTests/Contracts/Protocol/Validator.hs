@@ -23,6 +23,8 @@ import qualified Ledger.Address                       as LedgerAddress
 import qualified Ledger.Interval                      as LedgerInterval
 import qualified Plutus.V2.Ledger.Api                 as LedgerApiV2
 import           PlutusTx.Prelude
+import qualified System.Process as SystemProcess (callCommand)
+import qualified PlutusTx
 
 -- Project imports
 import qualified Constants                            as T
@@ -33,6 +35,9 @@ import qualified Protocol.Types                       as ProtocolT
 import qualified TestUtils.Common                     as TestUtilsCommon
 import qualified TestUtils.Constants                  as T
 import qualified TestUtils.Types                      as T
+import qualified Protocol.OnChain as ProtocolOnChain
+import qualified Prelude as P
+import qualified Helpers.Deploy as Deploy
 
 protocolValidatorTests :: T.TestParams -> Tasty.TestTree
 protocolValidatorTests tp =
@@ -53,7 +58,47 @@ protocolValidatorTests tp =
                         OffChainEval.assertBudgetAndSize eval_err eval_size OffChainEval.maxMemory OffChainEval.maxCPU OffChainEval.maxTxSize
                 ]
             ,
-
+                Tasty.testGroup
+                "Testing size and resources2"
+                [
+                    Tasty.testCase "Test Valid Update Tx" $
+                    let
+                        name = "export/ProtocolOnChain-validatorCode"
+                        protocolPolicyID_CS = T.tpProtocolPolicyID_CS tp
+                        tokenEmergencyAdminPolicy_CS =T.tpTokenEmergencyAdminPolicy_CS tp  
+                        ctx = updateProtocolContext tp
+                        datum = protocolDatum_MockData tp
+                        redeemer =  ProtocolT.mkDatumUpdateRedeemer
+                        validator = ProtocolOnChain.validatorCode 
+                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData protocolPolicyID_CS )
+                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData tokenEmergencyAdminPolicy_CS)
+                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData datum )
+                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData redeemer)
+                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData ctx )
+                        getValidator ad = TestUtilsCommon.findValidator tp ad
+                        getMintingPolicy cs = TestUtilsCommon.findMintingPolicy tp cs
+                        (eval_log, eval_err, eval_size) = OffChainEval.testContext getValidator getMintingPolicy ctx
+                    in do
+                        _ <- P.putStrLn $ (name ++ ".namedDeBruijn.flat") ++ " exporting..."
+                        _ <- Deploy.writeCompiledCodeToBinaryFile (name ++ ".namedDeBruijn.flat") validator 
+                        _ <- P.putStrLn $ (name ++ ".namedDeBruijn.flat") ++ " exported successfully."
+                        -- Run the uplc convert command
+                        _ <- P.putStrLn $ (name ++ ".textual.flat") ++ " exporting..."
+                        _ <- SystemProcess.callCommand $ "uplc convert -i \"./" ++ (name ++ ".namedDeBruijn.flat") ++ "\" --if flat-namedDeBruijn -o \"./" ++ (name ++ ".textual.flat") ++ "\" --of textual"
+                        _ <- P.putStrLn $ (name ++ ".textual.flat") ++ " exported successfully."
+                        _ <- P.putStrLn $ (name ++ ".logs") ++ " evaluating..."
+                        -- Run the uplc evaluate command
+                        _ <- SystemProcess.callCommand $ "uplc evaluate -i \"./" ++ (name ++ ".namedDeBruijn.flat") ++ "\" --if flat-namedDeBruijn --trace-mode LogsWithBudgets -o \"./" ++ (name ++ ".logs") ++ "\""
+                        _ <- P.putStrLn $ (name ++ ".logs") ++ " evaluating successfully."
+                        _ <- P.putStrLn $ name ++ " Converting logs...!"
+                        -- Generate the CPU flame graph
+                        _ <- SystemProcess.callCommand $ "cat \"./" ++ (name ++ ".logs") ++ "\" | traceToStacks | flamegraph.pl > \"./" ++ (name ++ ".cpu.svg") ++ "\""
+                        -- Generate the memory flame graph
+                        _ <- SystemProcess.callCommand $ "cat \"./" ++ (name ++ ".logs") ++ "\" | traceToStacks --column 2 | flamegraph.pl > \"./" ++ (name ++ ".mem.svg") ++ "\""
+                        _ <- P.putStrLn $ name ++ " Finish!"
+                        eval_log `OffChainEval.assertContainsAnyOf` []
+                        OffChainEval.assertBudgetAndSize eval_err eval_size OffChainEval.maxMemory OffChainEval.maxCPU OffChainEval.maxTxSize
+                ],
             Tasty.testCase
             "Datum not changed must succeed"
             ( OffChainEval.evaluateScriptValidatorEX

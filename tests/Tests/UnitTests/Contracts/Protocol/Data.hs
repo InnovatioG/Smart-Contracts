@@ -34,6 +34,7 @@ updateProtocolContext tp  =
     OffChainEval.mkBaseValidatorContext [] [] 0
         OffChainEval.|> OffChainEval.setSignatories (T.tpProtocolAdmins tp)
         OffChainEval.|> OffChainEval.setInputsAndAddRedeemers [(protocolUTxO_MockData tp, ProtocolT.mkDatumUpdateRedeemer)]
+        OffChainEval.|> OffChainEval.setSpendPurpose 0
         OffChainEval.|> OffChainEval.setOutputs [protocolUTxO_MockData tp]
         OffChainEval.|> OffChainEval.setValidRange (OffChainEval.createValidRange (T.tpTransactionDate tp) T.validTxTimeRange)
 

@@ -142,7 +142,7 @@ generateTestParams factoryDeployparams = do
                             }
                     campaignPolicy_TxOutRef =
                         LedgerApiV2.TxOutRef
-                            { LedgerApiV2.txOutRefId = "0000000000000000000000000000000000000000000000000000000000000008"
+                            { LedgerApiV2.txOutRefId = "10b4bb4711b96b90672a3db089e7ca78ec3377bd1a7eaccc82d29a115a3d316a"
                             , LedgerApiV2.txOutRefIdx = 1
                             }
                     ------------
@@ -155,13 +155,13 @@ generateTestParams factoryDeployparams = do
                     mint_CampaignFT = False
                     -- campaignFT_CS
                     campaignFT_TN = "FT"
-                    campaignFT_PriceADA = 1
+                    campaignFT_PriceADA = 1_000_000
                     requestedMaxADA = 10_000_000
                     requestedMinADA = 5_000_000
                     fundedADA = 8_000_000
                     collectedADA = 0
                     ------------
-                    beginDate = 0 :: LedgerApiV2.POSIXTime
+                    beginDate = 1 :: LedgerApiV2.POSIXTime
                     deadlineDate = LedgerApiV2.POSIXTime ((10 * 30 * 24 * 60 * 60 * 1000) :: Integer)
                     ------------
                     status = CampaignT.CsCreated

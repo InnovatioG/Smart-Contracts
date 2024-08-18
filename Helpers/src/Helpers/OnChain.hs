@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE CPP #-}
 
 --------------------------------------------------------------------------------
 {- HLINT ignore "Use camelCase"          -}
@@ -46,9 +47,9 @@ data SignedMessageCheckError
     -- ^ The signature did not match the public key
     deriving (Generic.Generic, P.Show)
 
-{-# INLINABLE checkSignature #-}
+{-# INLINABLE checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS #-}
 -- | Verify the signature of a message
-checkSignature
+checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS
   :: Ledger.PaymentPubKey
   -- ^ The public key of the signatory
   -> LedgerApiV2.BuiltinByteString
@@ -56,16 +57,30 @@ checkSignature
   -> Ledger.Signature
   -- ^ The signed message
   -> Either SignedMessageCheckError ()
-checkSignature  pubKey signedMsg signature =
+checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS !paymentPubKey !signedMsg !signature =
     let
-        -- (LedgerApiV2.PubKeyHash pk) = pubKey
-        Ledger.PaymentPubKey (Ledger.PubKey (LedgerApiV2.LedgerBytes pk)) = pubKey
-        Ledger.Signature sig = signature
-    in if verifyEd25519Signature pk signedMsg sig
-        then Right ()
-        else Left $ SignatureMismatch  pubKey  signature
+        !pubKey= Ledger.unPaymentPubKey paymentPubKey
+        !lb = Ledger.getPubKey pubKey
+        !bbs = LedgerApiV2.getLedgerBytes lb
+        !sig = Ledger.getSignature signature
+    in
+        if verifyEd25519Signature bbs signedMsg sig
+            then Right ()
+            else Left $ SignatureMismatch paymentPubKey signature
 
---------------------------------------------------------------------------------
+{-# INLINABLE checkSignatureBBS #-}
+-- | Verify the signature of a message
+checkSignatureBBS
+  :: LedgerApiV2.BuiltinByteString
+  -- ^ The public key of the signatory
+  -> LedgerApiV2.BuiltinByteString
+  -- ^ The message
+  -> LedgerApiV2.BuiltinByteString
+  -- ^ The signed message
+  -> Bool
+checkSignatureBBS !paymentPubKeyBBS !signedMsgBBS !signatureBBS = verifyEd25519Signature paymentPubKeyBBS signedMsgBBS signatureBBS
+
+--------------------------------------------------------------------------------2
 
 {-# INLINEABLE countDistinct #-}
 countDistinct :: Eq a => [a] -> Integer
@@ -409,9 +424,14 @@ isDateInRange !dateAt !info =
 --------------------------------------------------------------------------------
 
 {- Check that the tx range interval of validity. Must be lees than T.validTxTimeRange Pool Param. -}
-{-# INLINABLE isValidRange #-}
+{-# INLINEABLE isValidRange #-}
 isValidRange :: LedgerContextsV2.TxInfo -> LedgerApiV2.POSIXTime -> Bool
-isValidRange !info = isCorrectIntervalSize (LedgerApiV2.txInfoValidRange info)
+isValidRange !info = isValidRange_V2 (LedgerApiV2.txInfoValidRange info)
+
+{- Check that the tx range interval of validity. Must be lees than T.validTxTimeRange Pool Param. -}
+{-# INLINEABLE isValidRange_V2 #-}
+isValidRange_V2 :: LedgerApiV2.POSIXTimeRange -> LedgerApiV2.POSIXTime -> Bool
+isValidRange_V2 !rangeToValidate !validRange = isCorrectIntervalSize rangeToValidate validRange
 
 --------------------------------------------------------------------------------2
 
@@ -693,6 +713,19 @@ isSignedByAny :: [LedgerApiV2.PubKeyHash] -> LedgerContextsV2.TxInfo -> Bool
 isSignedByAny !pubKeyHashes !txInfo =
     any (LedgerContextsV2.txSignedBy txInfo) pubKeyHashes
 
+{-# INLINEABLE isSignedByAny_V2 #-}
+isSignedByAny_V2 :: [LedgerApiV2.PubKeyHash] -> [LedgerApiV2.PubKeyHash] -> Bool
+isSignedByAny_V2 !pubKeyHashes_to_find !pubKeyHashes_where_to_look  =
+    any (txSignedBy pubKeyHashes_where_to_look) pubKeyHashes_to_find
+
+{-# INLINABLE txSignedBy #-}
+-- | Check if a transaction was signed by the given public key.
+txSignedBy :: [LedgerApiV2.PubKeyHash] -> LedgerApiV2.PubKeyHash -> Bool
+txSignedBy txInfoSignatories k = case find (k ==) txInfoSignatories of
+    Just _  -> True
+    Nothing -> False
+
+
 {-# INLINEABLE isSignedByAll #-}
 isSignedByAll :: [LedgerApiV2.PubKeyHash] -> LedgerContextsV2.TxInfo -> Bool
 isSignedByAll !pubKeyHashes !txInfo =
@@ -871,9 +904,9 @@ isEqValue (LedgerValue.Value !mp1) (LedgerValue.Value !mp2) =
 --------------------------------------------------------------------------------2
 
 {-# INLINEABLE isEqValuesAndDatums #-}
-isEqValuesAndDatums :: LedgerApiV2.ToData d => [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> Bool
+isEqValuesAndDatums :: (Eq d, PlutusTx.ToData d) => [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> Bool
 isEqValuesAndDatums !valuesAndDatums1 !valuesAndDatums2 =
-    let valuesAndDatumsEqualsValuesAndDatums1 :: LedgerApiV2.ToData d => [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> Bool
+    let valuesAndDatumsEqualsValuesAndDatums1 ::  (Eq d, PlutusTx.ToData d) => [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> Bool
         valuesAndDatumsEqualsValuesAndDatums1 [] [] = True
         valuesAndDatumsEqualsValuesAndDatums1 ((v1, d1) : xs1) ((v2, d2) : xs2)
             | v1 `isEqValue` v2 && d1 `isUnsafeEqDatums` d2 =
@@ -882,7 +915,7 @@ isEqValuesAndDatums !valuesAndDatums1 !valuesAndDatums2 =
                 flattenValuesAndDatumsEqualsFlattenValuesAndDatums2 (v1, d1) xs1 [(v2, d2)] xs2
         valuesAndDatumsEqualsValuesAndDatums1 _ _ = False
 
-        flattenValuesAndDatumsEqualsFlattenValuesAndDatums2 :: LedgerApiV2.ToData d => (LedgerApiV2.Value, d) -> [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> Bool
+        flattenValuesAndDatumsEqualsFlattenValuesAndDatums2 ::  (Eq d, PlutusTx.ToData d) => (LedgerApiV2.Value, d) -> [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> [(LedgerApiV2.Value, d)] -> Bool
         flattenValuesAndDatumsEqualsFlattenValuesAndDatums2 (v1, d1) xs1 xs2 ((v2, d2) : xs3)
             | v1 `isEqValue` v2 && d1 `isUnsafeEqDatums` d2 =
                 valuesAndDatumsEqualsValuesAndDatums1 xs1 (xs2 ++ xs3)
@@ -895,9 +928,20 @@ isEqValuesAndDatums !valuesAndDatums1 !valuesAndDatums2 =
 
 -- | tienen que estar normalizados, o sea, mismo orden y mismos campos
 {-# INLINEABLE isUnsafeEqDatums #-}
-isUnsafeEqDatums :: (PlutusTx.ToData d) => d -> d -> Bool
+isUnsafeEqDatums :: (Eq d, PlutusTx.ToData d) => d -> d -> Bool
 isUnsafeEqDatums !dat1 !dat2 =
+#ifdef NO_USE_SERIALISE_DATA
+    dat1 == dat2
+#else
     TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat1) == TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat2)
+#endif
+
+{-# INLINEABLE isUnsafeEqDatumsCostly #-}
+isUnsafeEqDatumsCostly :: (Eq d, PlutusTx.ToData d)=> d -> d -> Bool
+isUnsafeEqDatumsCostly !dat1 !dat2 =
+   isUnsafeEqDatums dat1 dat2
+    -- TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat1) == TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat2)
+
 
 --------------------------------------------------------------------------------2
 
@@ -954,15 +998,18 @@ createValueAddingTokensOfCurrencySymbol !ac !cs !acIsWithoutTokenName !value !ca
 
 --------------------------------------------------------------------------------2
 
+{-# INLINEABLE sumValues #-}
 sumValues :: [LedgerApiV2.Value] -> LedgerApiV2.Value
-sumValues  = foldl (<>) (LedgerAda.lovelaceValueOf 0) 
+sumValues  = foldl (<>) (LedgerAda.lovelaceValueOf 0)
 
 --------------------------------------------------------------------------------22
 
+{-# INLINEABLE getADAfromValue #-}
 -- | Get the 'Ada' in the given 'Value'.
 getADAfromValue :: LedgerApiV2.Value -> Integer
 getADAfromValue v =  LedgerValue.valueOf v LedgerValue.adaSymbol LedgerValue.adaToken
 
+{-# INLINEABLE createADAValue #-}
 createADAValue :: Integer -> LedgerApiV2.Value
 createADAValue = LedgerAda.lovelaceValueOf
 
@@ -1069,6 +1116,7 @@ isScriptAddress _                                                        = False
 
 --------------------------------------------------------------------------------2
 
+{-# INLINEABLE getRedeemerForConsumeInput #-}
 getRedeemerForConsumeInput ::  LedgerApiV2.TxOutRef -> LedgerApiV2.TxInfo -> Maybe LedgerApiV2.Redeemer
 getRedeemerForConsumeInput txOutRef info =
     let
@@ -1108,6 +1156,13 @@ getUnsafe_Own_Input_TxOut :: LedgerContextsV2.ScriptContext -> LedgerApiV2.TxOut
 getUnsafe_Own_Input_TxOut (LedgerContextsV2.ScriptContext t_info (LedgerContextsV2.Spending o_ref)) = LedgerApiV2.txInInfoResolved (getUnsafe_TxInInfo_By_TxOutRef (LedgerApiV2.txInfoInputs t_info) o_ref)
 getUnsafe_Own_Input_TxOut _                                                                         = traceError "getUnsafe_Own_Input_TxOut"
 
+
+{-# INLINEABLE getUnsafe_Own_Input_TxOut_V2 #-}
+getUnsafe_Own_Input_TxOut_V2 :: LedgerContextsV2.ScriptPurpose -> [LedgerContextsV2.TxInInfo] -> LedgerApiV2.TxOut
+getUnsafe_Own_Input_TxOut_V2 (LedgerContextsV2.Spending o_ref) txInfoInputs = LedgerApiV2.txInInfoResolved (getUnsafe_TxInInfo_By_TxOutRef txInfoInputs o_ref)
+getUnsafe_Own_Input_TxOut_V2 _                                 _ = traceError "getUnsafe_Own_Input_TxOut_V2"
+
+
 -- --------------------------------------------------------------------------------2
 
 -- | Gets the Datum attached to the TxOut. Its unsafe becasue is asuming that the txOut has a Datum and that the Datum is of type datum
@@ -1122,12 +1177,19 @@ getUnsafe_Datum_From_TxOut !ctx !txOut =
             Nothing -> traceError "getUnsafe_Datum_From_TxOut"
             Just x  -> LedgerApiV2.unsafeFromBuiltinData @datum $ LedgerApiV2.getDatum x
 
+{-# INLINEABLE getUnsafe_InlineDatum_From_TxOut_V2 #-}
+getUnsafe_InlineDatum_From_TxOut_V2 :: forall datum. PlutusTx.UnsafeFromData datum =>LedgerApiV2.TxOut -> datum
+getUnsafe_InlineDatum_From_TxOut_V2 !txOut =
+    case LedgerTxV2.txOutDatum txOut of
+            (LedgerTxV2.OutputDatum datum)  -> LedgerApiV2.unsafeFromBuiltinData @datum $ LedgerApiV2.getDatum datum
+            _ -> traceError "getUnsafe_InlineDatum_From_TxOut_V2"
+
 -- | Gets the Datum type attached to the TxOut and returns a tuple (txOut, datum type).
 -- | Its unsafe becasue is asuming that the txOut has a Datum and that the Datum is of type datum
 {-# INLINEABLE getTxOuts_And_DatumTypes_From_TxOuts_By_CS #-}
 getTxOuts_And_DatumTypes_From_TxOuts_By_CS :: forall datum datumType. PlutusTx.UnsafeFromData datum => LedgerContextsV2.ScriptContext -> [LedgerApiV2.TxOut] -> LedgerApiV2.CurrencySymbol -> (datum -> datumType) -> [(LedgerApiV2.TxOut, datumType)]
 getTxOuts_And_DatumTypes_From_TxOuts_By_CS !ctx !txOuts !cs !getDatumTypeFromDatum =
-    [(txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut) | txOut <- txOuts, 
+    [(txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut) | txOut <- txOuts,
         isScriptAddress (LedgerApiV2.txOutAddress txOut) && isToken_With_CS_InValue (LedgerApiV2.txOutValue txOut) cs]
 
 -- | Gets the Datum type attached to the TxOut and returns a tuple (txOut, datum type).
@@ -1135,13 +1197,13 @@ getTxOuts_And_DatumTypes_From_TxOuts_By_CS !ctx !txOuts !cs !getDatumTypeFromDat
 {-# INLINEABLE getTxOuts_And_DatumTypes_From_TxOuts_By_AC #-}
 getTxOuts_And_DatumTypes_From_TxOuts_By_AC :: forall datum datumType. PlutusTx.UnsafeFromData datum => LedgerContextsV2.ScriptContext -> [LedgerApiV2.TxOut] -> LedgerValue.AssetClass -> (datum -> datumType) -> [(LedgerApiV2.TxOut, datumType)]
 getTxOuts_And_DatumTypes_From_TxOuts_By_AC !ctx !txOuts !ac !getDatumTypeFromDatum =
-    [(txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut) | txOut <- txOuts, 
+    [(txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut) | txOut <- txOuts,
         isScriptAddress (LedgerApiV2.txOutAddress txOut) && isToken_With_AC_InValue (LedgerApiV2.txOutValue txOut) ac]
 
 {-# INLINEABLE getTxOutRefs_TxOuts_And_DatumTypes_From_TxOutRefs_TxOuts_By_CS #-}
 getTxOutRefs_TxOuts_And_DatumTypes_From_TxOutRefs_TxOuts_By_CS :: forall datum datumType. PlutusTx.UnsafeFromData datum => LedgerContextsV2.ScriptContext -> [(LedgerApiV2.TxOutRef, LedgerApiV2.TxOut)] -> LedgerApiV2.CurrencySymbol -> (datum -> datumType) -> [(LedgerApiV2.TxOutRef, LedgerApiV2.TxOut, datumType)]
 getTxOutRefs_TxOuts_And_DatumTypes_From_TxOutRefs_TxOuts_By_CS !ctx !txOutRef_And_TxOuts !cs !getDatumTypeFromDatum =
-    [(txOutRef, txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut) | (txOutRef, txOut) <- txOutRef_And_TxOuts, 
+    [(txOutRef, txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut) | (txOutRef, txOut) <- txOutRef_And_TxOuts,
         isScriptAddress (LedgerApiV2.txOutAddress txOut) && isToken_With_CS_InValue (LedgerApiV2.txOutValue txOut) cs]
 
 {-# INLINEABLE getTxOutRefs_TxOuts_And_DatumTypes_From_TxOutRefs_TxOuts_By_AC #-}
@@ -1169,4 +1231,14 @@ getTxOut_And_DatumType_From_TxOut_And_AC_And_Address !ctx !txOut !ac !add' !getD
        then Just (txOut, getDatumTypeFromDatum $ getUnsafe_Datum_From_TxOut @datum ctx txOut)
        else Nothing
 
+
+{-# INLINEABLE getTxOut_And_InlineDatumType_From_TxOut_And_AC_And_Address_V2 #-}
+getTxOut_And_InlineDatumType_From_TxOut_And_AC_And_Address_V2 :: forall datum datumType. PlutusTx.UnsafeFromData datum => LedgerApiV2.TxOut -> LedgerValue.AssetClass -> Maybe Ledger.Address -> (datum -> datumType) -> Maybe (LedgerApiV2.TxOut, datumType)
+getTxOut_And_InlineDatumType_From_TxOut_And_AC_And_Address_V2 !txOut !ac !add' !getDatumTypeFromDatum =
+    if (case  add' of
+            Just add -> LedgerApiV2.txOutAddress txOut == add
+            _        -> True)
+        && isToken_With_AC_InValue (LedgerApiV2.txOutValue txOut) ac
+       then Just (txOut, getDatumTypeFromDatum $ getUnsafe_InlineDatum_From_TxOut_V2 @datum txOut)
+       else Nothing
 --------------------------------------------------------------------------------2

@@ -9,7 +9,8 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeOperators         #-}
-
+--------------------------------------------------------------------------------2
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
 --------------------------------------------------------------------------------2
 {- HLINT ignore "Use camelCase"          -}
 {- HLINT ignore "Reduce duplication"          -}

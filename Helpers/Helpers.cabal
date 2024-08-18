@@ -1,93 +1,210 @@
-cabal-version:      3.4
-name:               cardano-helpers
-version:            0.1.0.1
-author:             Manuel Padilla
-maintainer:         manuelpad@gmail.com
-build-type:         Simple
-copyright:          © 2024 Manuel Padilla
-license:            Apache-2.0
+cabal-version: 3.4
+name:          cardano-helpers
+version:       0.1.0.1
+author:        Manuel Padilla
+maintainer:    manuelpad@gmail.com
+build-type:    Simple
+copyright:     © 2024 Manuel Padilla
+license:       Apache-2.0
 
-common common-all
-    build-depends:    base ^>=4.14.3.0
-                    , aeson
-                    , bytestring
-                    , containers
-                    , cardano-api
-                    , data-default
-                    , plutus-ledger-api
-                    , plutus-tx-plugin
-                    , plutus-tx
-                    , tasty
-                    , tasty-hunit
-                    , QuickCheck
-                    , text
-                    , plutonomy
-                    , serialise
-                    , Cabal
-                    
+---------------------------------
+flag no-use-serialize-onchain
+  description:
+    Use serialize data on chain code
+  default:     False
+  manual:      True
 
-    default-language: Haskell2010
-    ghc-options: -Wall -fobject-code -fno-ignore-interface-pragmas
-                 -fno-omit-interface-pragmas -fno-strictness 
-                 -fno-spec-constr -fno-specialise -fexpose-all-unfoldings
-                 -fplugin-opt PlutusTx.Plugin:defer-errors
+---------------------------------
+flag defer-plugin-errors
+  description:
+    Defer errors from the plugin, useful for things like Haddock that can't handle it.
 
-common common-all-tests
-    import:           common-all
-    build-depends:    QuickCheck
-                    , tasty
-                    , plutus-simple-model
+  default:     False
+  manual:      True
 
+---------------------------------
+-- Define a flag for controlling UPLC dumping
+flag dump-uplc
+  description: Enable dumping of UPLC files
+  default:     False
+  manual:      True
+
+---------------------------------
+common warnings-config
+  ghc-options:
+    -Wall -Wnoncanonical-monad-instances
+    -Wno-unused-packages 
+    -- -Wunused-packages
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wredundant-constraints -Widentities -Wunused-matches
+    -Wunused-binds -Wno-unused-imports -fno-warn-orphans
+
+---------------------------------
+-- DEFAULT GHC RECOMENDATION:
+-- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx
+---------------------------------
+-- DEFAULT Plutus Tx compiler options
+-- https://plutus.cardano.intersectmbo.org/docs/delve-deeper/plutus-tx-compiler-options
+---------------------------------
+-- -fplugin-opt PlutusTx.Plugin:no-conservative-optimisation
+-- -fplugin-opt PlutusTx.Plugin:context-level=1
+-- -fplugin-opt PlutusTx.Plugin:no-coverage-all
+-- -fplugin-opt PlutusTx.Plugin:no-coverage-boolean
+-- -fplugin-opt PlutusTx.Plugin:no-coverage-location
+-- -fplugin-opt PlutusTx.Plugin:no-dump-compilation-trace
+-- -fplugin-opt PlutusTx.Plugin:no-dump-pir
+-- -fplugin-opt PlutusTx.Plugin:no-dump-tplc
+-- -fplugin-opt PlutusTx.Plugin:no-dump-uplc
+-- -fplugin-opt PlutusTx.Plugin:inline-constants
+-- -fplugin-opt PlutusTx.Plugin:max-cse-iterations=4
+-- -fplugin-opt PlutusTx.Plugin:max-simplifier-iterations-pir=12
+-- -fplugin-opt PlutusTx.Plugin:max-simplifier-iterations-uplc=12
+-- -fplugin-opt PlutusTx.Plugin:optimize
+-- -fplugin-opt PlutusTx.Plugin:no-pedantic
+-- -fplugin-opt PlutusTx.Plugin:no-preserve-logging
+-- -fplugin-opt PlutusTx.Plugin:profile-all=None
+-- -fplugin-opt PlutusTx.Plugin:relaxed-float-in
+-- -fplugin-opt PlutusTx.Plugin:no-remove-trace
+-- -fplugin-opt PlutusTx.Plugin:simplifier-beta
+-- -fplugin-opt PlutusTx.Plugin:simplifier-inline
+-- -fplugin-opt PlutusTx.Plugin:simplifier-remove-dead-bindings
+-- -fplugin-opt PlutusTx.Plugin:simplifier-unwrap-cancel
+-- -fplugin-opt PlutusTx.Plugin:strictify-bindings
+-- -fplugin-opt PlutusTx.Plugin:target-version=1.1.0
+-- -fplugin-opt PlutusTx.Plugin:typecheck
+-- -fplugin-opt PlutusTx.Plugin:verbosity=Quiet
+---------------------------------
+common plutus-tx-config
+  ghc-options:
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
+    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
+    -fno-expose-all-unfoldings
+
+  ---------------------------------
+  ghc-options:
+
+  ---------------------------------
+  if flag(defer-plugin-errors)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
+  ---------------------------------
+  if flag(dump-uplc)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:dump-uplc
+
+  ---------------------------------
+  -- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx#extensions
+  ---------------------------------
+  default-extensions: Strict
+
+---------------------------------
+common common-all-deps-and-languange
+  default-language:   Haskell2010
+  build-depends:
+    , aeson
+    , base
+    , base16-bytestring
+    , base64-bytestring
+    , bech32
+    , bytestring
+    , containers
+    , directory
+    , filepath
+    , flat
+    , freer-extras
+    , freer-simple
+    , hex-text
+    , lens
+    , MissingH
+    , old-locale
+    , openapi3
+    , prettyprinter
+    , random
+    , regex
+    , serialise
+    , split
+    , stm
+    , text
+    , time
+    , utf8-string
+
+  default-extensions:
+    NoImplicitPrelude
+    BangPatterns
+    NumericUnderscores
+    OverloadedStrings
+
+---------------------------------
+common common-deps-main-library
+  build-depends:
+    , cardano-addresses
+    , cardano-api
+    , cardano-binary
+    , cardano-crypto-class
+    , cardano-ledger-alonzo
+    , cardano-ledger-babbage
+    , cardano-ledger-core
+    , cardano-ledger-shelley
+    , cardano-node-emulator
+    , cardano-wallet-core
+    , data-default
+    , playground-common
+    , plutonomy
+    , plutus-chain-index-core
+    , plutus-contract
+    , plutus-core
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-ledger-constraints
+    , plutus-pab
+    , plutus-script-utils
+    , plutus-simple-model
+    , plutus-tx
+    , plutus-tx-constraints
+    , plutus-tx-plugin
+    , QuickCheck
+    , tasty
+    , tasty-hunit
+
+---------------------------------
+common common-deps-test-suites
+  build-depends:
+    , mtl
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-simple-model
+    , plutus-tx
+    , plutus-tx-plugin
+    , QuickCheck
+    , quickcheck-instances
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , transformers
+
+---------------------------------
 library
-    import:             common-all
-    hs-source-dirs:     src
-    exposed-modules:    
-                    Helpers.CLI,
-                    Helpers.Constants,
-                    Helpers.Deploy,
-                    Helpers.Emulator,
-                    Helpers.OffChain,
-                    Helpers.OffChainEval,
-                    Helpers.OnChain,
-                    Helpers.Types
-    default-extensions:
-        NoImplicitPrelude
-        BangPatterns
-        NumericUnderscores
-        OverloadedStrings
-    build-depends:
-        base16-bytestring
-        , bech32
-        , directory
-        , filepath
-        , freer-extras
-        , flat
-        , hex-text
-        , lens
-        , prettyprinter
-        , time
-        , utf8-string
-        , base64-bytestring
-    build-depends:
-        plutus-ledger
-        , cardano-addresses
-        , cardano-binary
-        , cardano-crypto-class
-        , cardano-ledger-alonzo
-        , cardano-ledger-babbage
-        , cardano-ledger-core
-        , cardano-node-emulator
-        , playground-common
-        , plutus-chain-index-core
-        , plutus-contract
-        , plutus-core
-        , plutus-ledger-constraints
-        , plutus-script-utils
-        , plutus-tx-constraints
+  import:
+    common-all-deps-and-languange, common-deps-main-library, plutus-tx-config, warnings-config
+  if flag(no-use-serialize-onchain)
+    cpp-options: -DNO_USE_SERIALISE_DATA
+  hs-source-dirs:  src
+  exposed-modules:
+    Helpers.CLI
+    Helpers.Constants
+    Helpers.Deploy
+    Helpers.Emulator
+    Helpers.OffChain
+    Helpers.OffChainEval
+    Helpers.OnChain
+    Helpers.Types
 
-test-suite HelpersTest
-    import:             common-all-tests
-    type:               exitcode-stdio-1.0
-    main-is:            HelpersTest.hs
-    hs-source-dirs:     test
-    build-depends:      cardano-helpers
+---------------------------------
+-- test-suite HelpersTest
+--     import:             common-all-deps-and-languange,  common-deps-test-suites, plutus-tx-config, warnings-config
+--     type:               exitcode-stdio-1.0
+--     main-is:            HelpersTest.hs
+--     hs-source-dirs:     test
+--     build-depends:      cardano-helpers
+---------------------------------
+

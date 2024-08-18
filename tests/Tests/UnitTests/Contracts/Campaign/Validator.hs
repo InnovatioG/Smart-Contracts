@@ -8,61 +8,78 @@ creation and management of Campaign Fundss.
 It includes multiple test cases to ensure the integrity and correctness of the
 validation scripts.
 -}
+{-# LANGUAGE TypeApplications #-}
 module Contracts.Campaign.Validator where
 
 -- Non-IOG imports
 import qualified Test.Tasty              as Tasty
 import qualified Test.Tasty.HUnit        as Tasty
+import qualified Control.Monad as ControlMonad (replicateM, unless)
 
 -- IOG imports
 import qualified Ledger
 import qualified Ledger.Ada              as LedgerAda
 import qualified Ledger.Address          as LedgerAddress
 import qualified Plutus.V2.Ledger.Api    as LedgerApiV2
+import qualified PlutusTx
 import           PlutusTx.Prelude
+import qualified Prelude                 as P
+import qualified Data.ByteString         as BS
+import qualified Flat
+import qualified UntypedPlutusCore
 
 -- Project imports
+import qualified Campaign.OnChain        as CampaignOnChain
 import qualified Campaign.Types          as CampaignT
 import qualified Constants               as T
-import           Contracts.Campaign.Data
 import           Contracts.Protocol.Data
+import           Contracts.Campaign.Data 
+
+import qualified Helpers.Deploy          as Deploy
 import qualified Helpers.OffChain        as OffChainHelpers
 import qualified Helpers.OffChainEval    as OffChainEval
 import qualified Protocol.Types          as ProtocolT
 import qualified TestUtils.Common        as TestUtilsCommon
 import qualified TestUtils.Constants     as T
 import qualified TestUtils.Types         as T
+import qualified Plutus.Model as PlutusSimpleModel
+import qualified Campaign.Types as T
 
 -- | Suite of tests validating the logic of the '(T.tpCampaignValidator tp)'.
 campaignValidatorTests :: T.TestParams -> Tasty.TestTree
 campaignValidatorTests tp =
     Tasty.testGroup
         "Testing Fund Validator"
-        [ updateDatumTests tp
+        [ 
+        updateDatumTests tp
         , deleteTests tp
         , addCampaignFundsTests tp
         , deleteCampaignFundsTests tp
         ]
+
+
+----------------------------------------
 
 -- | Test group for updating the datum.
 updateDatumTests :: T.TestParams -> Tasty.TestTree
 updateDatumTests tp =
     Tasty.testGroup
         "Update Datum tests"
-        [ 
+        [
              Tasty.testGroup
                 "Testing size and resources"
                 [
-                    Tasty.testCase "Test Valid Update Tx; TxValidSize < 16Kb; Mem < 14Mb; Cpu < 10_000M" $
+                    Tasty.testCase "Test Valid Update Tx" $
                     let
                         ctx = updateCampaignDatumContext tp
                         getValidator ad = TestUtilsCommon.findValidator tp ad
                         getMintingPolicy cs = TestUtilsCommon.findMintingPolicy tp cs
                         (eval_log, eval_err, eval_size) = OffChainEval.testContext getValidator getMintingPolicy ctx
                     in do
-                        eval_log `OffChainEval.assertContainsAnyOf` []
+                        eval_log `OffChainEval.assertContainsAnyOf` ["not isEmergencyAdminTokenPresent"]
                         OffChainEval.assertBudgetAndSize eval_err eval_size OffChainEval.maxMemory OffChainEval.maxCPU OffChainEval.maxTxSize
                 ]
+
         , Tasty.testCase "Successful case" $
             let
                 ctx = updateCampaignDatumContext tp

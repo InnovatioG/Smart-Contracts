@@ -1,8 +1,8 @@
 -- plutus-starter package
 packages:
   ./
- ./Helpers
- 
+  ./Helpers
+
 -- Always build tests and benchmarks.
 tests: true
 benchmarks: false
@@ -239,6 +239,8 @@ source-repository-package
 source-repository-package
    type: git                                                                                                                         
    location: https://github.com/geniusyield/plutus-simple-model
-   tag: d710c4c5400ff7072fe89c337c1cdd0128dc5d99
+   --tag: d710c4c5400ff7072fe89c337c1cdd0128dc5d99
+   tag: 7ba435b3522f56fb1ab5db491b7821b68d7e0682
+   
 
 

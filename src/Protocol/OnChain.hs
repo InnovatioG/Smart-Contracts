@@ -7,7 +7,15 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
-
+--------------------------------------------------------------------------------2
+-- {-# OPTIONS_GHC -g #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:profile-all #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:conservative-optimisation #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:coverage-all #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:coverage-boolean #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:coverage-location #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:verbosity=1 #-}
 --------------------------------------------------------------------------------2
 {- HLINT ignore "Use camelCase"          -}
 {- HLINT ignore "Reduce duplication"          -}
@@ -26,6 +34,7 @@ import qualified Plutus.V2.Ledger.Api      as LedgerApiV2
 import qualified Plutus.V2.Ledger.Contexts as LedgerContextsV2
 import qualified PlutusTx
 import           PlutusTx.Prelude
+import qualified PlutusTx.Builtins.Internal as BI
 
 --------------------------------------------------------------------------------2
 -- Import Internos
@@ -126,18 +135,69 @@ mkPolicyID (T.PolicyParams !protocolPolicyID_TxOutRef) _ !ctxRaw =
                 && traceIfFalse "not isCorrect_Output_ProtocolDatum" isCorrect_Output_ProtocolDatum
                 && traceIfFalse "not isCorrect_Output_ProtocolDatum_Value" isCorrect_Output_ProtocolDatum_Value
 
-------------------
-
 --------------------------------------------------------------------------------2
+
+{-# INLINEABLE dataToListData #-}
+dataToListData :: BuiltinData -> BI.BuiltinList BuiltinData
+dataToListData bd = BI.snd (BI.unsafeDataAsConstr bd)
+
+{-# INLINABLE parseData #-}
+parseData ::PlutusTx.FromData a =>  BuiltinData -> BuiltinString -> a
+parseData d s = case PlutusTx.fromBuiltinData  d of
+  Just d_ -> d_
+  _      -> traceError s
 
 {-# INLINEABLE mkValidator #-}
 mkValidator :: T.ValidatorParams -> BuiltinData -> BuiltinData -> BuiltinData -> ()
 mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_CS) !datumRaw !redRaw !ctxRaw =
     let
         ------------------
+        ctxListRaw :: BI.BuiltinList BuiltinData
+        !ctxListRaw = dataToListData ctxRaw
+        ------------------
+        infoListRaw  :: BI.BuiltinList BuiltinData
+        !infoListRaw  = dataToListData $ BI.head ctxListRaw
+        ------------------
+        txInfoInputsRaw :: BuiltinData
+        !txInfoInputsRaw = BI.head infoListRaw
+        txInfoReferenceInputsPlusTail :: BI.BuiltinList BuiltinData
+        !txInfoReferenceInputsPlusTail = BI.tail infoListRaw
+        txInfoReferenceInputsRaw :: BuiltinData
+        !txInfoReferenceInputsRaw = BI.head txInfoReferenceInputsPlusTail
+        txInfoOutputsPlusTail :: BI.BuiltinList BuiltinData
+        !txInfoOutputsPlusTail = BI.tail txInfoReferenceInputsPlusTail
+        txInfoOutputsRaw :: BuiltinData
+        !txInfoOutputsRaw = BI.head txInfoOutputsPlusTail
+        -- Skipping txInfoFee
+        txInfoMintPlusTail :: BI.BuiltinList BuiltinData
+        !txInfoMintPlusTail = BI.tail (BI.tail txInfoOutputsPlusTail)
+        txInfoMintRaw :: BuiltinData
+        !txInfoMintRaw = BI.head txInfoMintPlusTail
+        -- Skipping txInfoDCert and txInfoWdrl
+        txInfoValidRangePlusTail :: BI.BuiltinList BuiltinData
+        !txInfoValidRangePlusTail = BI.tail (BI.tail (BI.tail txInfoMintPlusTail))
+        txInfoValidRangeRaw :: BuiltinData
+        !txInfoValidRangeRaw = BI.head txInfoValidRangePlusTail
+        txInfoSignatoriesPlusTail :: BI.BuiltinList BuiltinData
+        !txInfoSignatoriesPlusTail = BI.tail txInfoValidRangePlusTail
+        txInfoSignatoriesRaw :: BuiltinData
+        !txInfoSignatoriesRaw = BI.head txInfoSignatoriesPlusTail
+        ------------------
+        !txInfoInputs = parseData @[LedgerContextsV2.TxInInfo] txInfoInputsRaw "txInfoInputs: Invalid type"
+        !txInfoReferenceInputs = parseData @[LedgerContextsV2.TxInInfo] txInfoReferenceInputsRaw "txInfoReferenceInputs: Invalid type"
+        !txInfoOutputs = parseData @[LedgerApiV2.TxOut] txInfoOutputsRaw "txInfoOutputs: Invalid type"
+        !txInfoMint = parseData @LedgerApiV2.Value txInfoMintRaw "txInfoMint: Invalid type"
+        !txInfoValidRange = parseData @LedgerApiV2.POSIXTimeRange txInfoValidRangeRaw "txInfoValidRange: Invalid type"
+        !txInfoSignatories = parseData @[LedgerApiV2.PubKeyHash] txInfoSignatoriesRaw "txInfoSignatories: Invalid type"
+        ------------------
+        scriptContextPurposeRaw :: BuiltinData
+        !scriptContextPurposeRaw = BI.head $ BI.tail ctxListRaw 
+        ------------------
+        scriptContextPurpose = parseData @LedgerContextsV2.ScriptPurpose scriptContextPurposeRaw "scriptContextPurpose: Invalid type"
+        ------------------
         !redeemer = LedgerApiV2.unsafeFromBuiltinData @T.ValidatorRedeemer redRaw
-        !ctx = LedgerApiV2.unsafeFromBuiltinData @LedgerContextsV2.ScriptContext ctxRaw
-        !info = LedgerContextsV2.scriptContextTxInfo ctx
+        -- !ctx = LedgerApiV2.unsafeFromBuiltinData @LedgerContextsV2.ScriptContext ctxRaw
+        -- !info = LedgerContextsV2.scriptContextTxInfo ctx
         ------------------
         -- Si esta el token de emergencia se saltea todos los controles
         isEmergencyRedeemer :: Bool
@@ -152,14 +212,14 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                 let
                     !tokenEmergencyAdmin_AC = LedgerValue.AssetClass (tokenEmergencyAdminPolicy_CS, T.tokenEmergencyAdmin_TN)
                     -- search emergency admin token in output 0
-                    !isEmergencyAdminTokenPresent = OnChainHelpers.isToken_With_AC_InValue (LedgerApiV2.txOutValue $ head (LedgerApiV2.txInfoOutputs info)) tokenEmergencyAdmin_AC
+                    !isEmergencyAdminTokenPresent = OnChainHelpers.isToken_With_AC_InValue (LedgerApiV2.txOutValue $ head txInfoOutputs) tokenEmergencyAdmin_AC
                 in
                     if traceIfFalse "not isEmergencyAdminTokenPresent" isEmergencyAdminTokenPresent
                         then ()
                         else error ()
             False ->
                 if traceIfFalse "" useThisToMakeScriptUnique
-                    && traceIfFalse "not isValidRange" (OnChainHelpers.isValidRange info T.validTxTimeRange)
+                    && traceIfFalse "not isValidRange" (OnChainHelpers.isValidRange_V2 txInfoValidRange T.validTxTimeRange)
                     && traceIfFalse "Expected exactly one Protocol input" (length inputs_Own_TxOuts == 1)
                     && (
                          -- Si no, se valida que el que firma sea admin o que este el token admin y luego se valida el redeemer
@@ -176,15 +236,15 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                     ------------------
                     !protocolID_AC = LedgerValue.AssetClass (protocolPolicyID_CS, T.protocolID_TN)
                     ------------------
-                    !input_TxOut_BeingValidated = OnChainHelpers.getUnsafe_Own_Input_TxOut ctx
+                    !input_TxOut_BeingValidated = OnChainHelpers.getUnsafe_Own_Input_TxOut_V2 scriptContextPurpose txInfoInputs
                     !protocol_Validator_Address = LedgerApiV2.txOutAddress input_TxOut_BeingValidated
                      ------------------
-                    !inputs_Own_TxOuts = [LedgerApiV2.txInInfoResolved txInfoInput | txInfoInput <- LedgerApiV2.txInfoInputs info,
+                    !inputs_Own_TxOuts = [LedgerApiV2.txInInfoResolved txInfoInput | txInfoInput <- txInfoInputs ,
                         let address = LedgerApiV2.txOutAddress (LedgerApiV2.txInInfoResolved txInfoInput)
                         in  OnChainHelpers.isScriptAddress address && address == protocol_Validator_Address]
                     ------------------
                     !outputs_txOuts =
-                        [ txOut | txOut <- LedgerApiV2.txInfoOutputs info, OnChainHelpers.isScriptAddress (LedgerApiV2.txOutAddress txOut)
+                        [ txOut | txOut <- txInfoOutputs, OnChainHelpers.isScriptAddress (LedgerApiV2.txOutAddress txOut)
                         ]
                     ------------------
                     !_ = case outputs_txOuts of
@@ -197,8 +257,7 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                     !output_Own_TxOut_And_ProtocolDatum =
                         fromMaybe
                             (traceError "Expected Protocol at output to script index 0")
-                            ( OnChainHelpers.getTxOut_And_DatumType_From_TxOut_And_AC_And_Address @T.ValidatorDatum @T.ProtocolDatumType
-                                ctx
+                            ( OnChainHelpers.getTxOut_And_InlineDatumType_From_TxOut_And_AC_And_Address_V2 @T.ValidatorDatum @T.ProtocolDatumType
                                 (head outputs_txOuts)
                                 protocolID_AC
                                 (Just protocol_Validator_Address)
@@ -213,12 +272,12 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                     !validateAdminAction =
                         -- Que este el token de admin presente en output 0
                         -- o Que sea Protocol Admin
-                        traceIfFalse "not isSignedByAny admins nor isAdminTokenPresent" (OnChainHelpers.isSignedByAny admins info || isAdminTokenPresent)
+                        traceIfFalse "not isSignedByAny admins nor isAdminTokenPresent" (OnChainHelpers.isSignedByAny_V2 admins txInfoSignatories || isAdminTokenPresent)
                         where
                             !admins = T.getAdmins protocolDatum_In
                             ------------------
                             isAdminTokenPresent :: Bool
-                            isAdminTokenPresent = case LedgerApiV2.txInfoOutputs info of
+                            isAdminTokenPresent = case txInfoOutputs of
                                 []         -> False
                                 -- search admin token in output 0
                                 (output:_) -> OnChainHelpers.isToken_With_AC_InValue (LedgerApiV2.txOutValue output) tokenAdmin_AC
@@ -292,7 +351,6 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                                             valueOf_ProtocolDatum_Out `OnChainHelpers.isEqValue` valueFor_ProtocolDatum_Control
                             _ -> traceIfFalse "incorrect redeemer" False
 
-------------------
 
 --------------------------------------------------------------------------------2
 
@@ -320,6 +378,7 @@ mkWrappedPolicyID protocolPolicy_TxHash protocolPolicy_TxOutputIndex = mkPolicyI
                 { ppProtocolPolicyID_TxOutRef = txout
                 }
 
+{-# INLINEABLE policyIDCode #-}
 policyIDCode :: PlutusTx.CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ())
 policyIDCode = Plutonomy.optimizeUPLC $$(PlutusTx.compile [||mkWrappedPolicyID||])
 
@@ -344,6 +403,7 @@ mkWrappedValidator protocolPolicyID_CS tokenEmergencyAdminPolicy_CS = mkValidato
                 , vpTokenEmergencyAdminPolicy_CS = PlutusTx.unsafeFromBuiltinData tokenEmergencyAdminPolicy_CS
                 }
 
+{-# INLINEABLE validatorCode #-}
 validatorCode :: PlutusTx.CompiledCode (BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ())
 validatorCode = Plutonomy.optimizeUPLC $$(PlutusTx.compile [||mkWrappedValidator||])
 
