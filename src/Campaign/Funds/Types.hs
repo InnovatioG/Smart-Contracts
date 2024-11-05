@@ -34,6 +34,7 @@ import qualified Schema
 
 import qualified Helpers.Types        as T
 import qualified Types       as T
+import qualified Helpers.OnChain as OnChainHelpers
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -94,8 +95,8 @@ data CampaignFundsDatumType
           { cfdIndex                    :: Integer
           , cfdCampaignPolicy_CS        :: T.CS
           , cfdCampaignFundsPolicyID_CS :: T.CS
-          , cfdSubtotal_Avalaible_FT       :: Integer
-          , cfdSubtotal_Sold_FT            :: Integer
+          , cfdSubtotal_Avalaible_CampaignToken       :: Integer
+          , cfdSubtotal_Sold_CampaignToken            :: Integer
           , cfdSubtotal_Avalaible_ADA            :: Integer
           , cfdSubtotal_Collected_ADA            :: Integer
           , cfdMinADA                   :: Integer
@@ -108,8 +109,8 @@ instance Eq CampaignFundsDatumType where
         cfdIndex ps1 == cfdIndex ps2
             && cfdCampaignPolicy_CS ps1 == cfdCampaignPolicy_CS ps2
             && cfdCampaignFundsPolicyID_CS ps1 == cfdCampaignFundsPolicyID_CS ps2
-            && cfdSubtotal_Avalaible_FT ps1 == cfdSubtotal_Avalaible_FT ps2
-            && cfdSubtotal_Sold_FT  ps1 == cfdSubtotal_Sold_FT  ps2
+            && cfdSubtotal_Avalaible_CampaignToken ps1 == cfdSubtotal_Avalaible_CampaignToken ps2
+            && cfdSubtotal_Sold_CampaignToken  ps1 == cfdSubtotal_Sold_CampaignToken  ps2
             && cfdSubtotal_Avalaible_ADA  ps1 == cfdSubtotal_Avalaible_ADA  ps2
             && cfdSubtotal_Collected_ADA  ps1 == cfdSubtotal_Collected_ADA  ps2
             && cfdMinADA ps1 == cfdMinADA ps2
@@ -139,9 +140,15 @@ PlutusTx.makeIsDataIndexed
     [ ('CampaignFundsDatum, 0)
     ]
 
-{-# INLINEABLE getCampaignFundsDatumType #-}
-getCampaignFundsDatumType :: ValidatorDatum -> CampaignFundsDatumType
-getCampaignFundsDatumType (CampaignFundsDatum sdType) = sdType
+{-# INLINEABLE getCampaignFunds_DatumType #-}
+getCampaignFunds_DatumType :: ValidatorDatum -> CampaignFundsDatumType
+getCampaignFunds_DatumType (CampaignFundsDatum sdType) = sdType
+
+{-# INLINEABLE getCampaignFunds_DatumType_From_UTxO #-}
+getCampaignFunds_DatumType_From_UTxO :: LedgerApiV2.TxOut -> CampaignFundsDatumType
+getCampaignFunds_DatumType_From_UTxO utxo = case OnChainHelpers.getInlineDatum_From_TxOut @ValidatorDatum utxo of
+                    Nothing     -> P.error "No CampaignFunds Datum found"
+                    Just datum' -> getCampaignFunds_DatumType datum'
 
 instance T.ShowDatum ValidatorDatum where
     showCborAsDatumType cbor = case LedgerApiV2.fromBuiltinData @ValidatorDatum cbor of
@@ -150,29 +157,29 @@ instance T.ShowDatum ValidatorDatum where
 
 --------------------------------------------------------------------------------2
 
-{-# INLINEABLE mkCampaignFundsDatumType #-}
-mkCampaignFundsDatumType :: Integer -> T.CS -> T.CS -> Integer -> Integer -> Integer -> Integer -> Integer -> CampaignFundsDatumType
-mkCampaignFundsDatumType = CampaignFundsDatumType
+{-# INLINEABLE mkCampaignFunds_DatumType #-}
+mkCampaignFunds_DatumType :: Integer -> T.CS -> T.CS -> Integer -> Integer -> Integer -> Integer -> Integer -> CampaignFundsDatumType
+mkCampaignFunds_DatumType = CampaignFundsDatumType
 
-{-# INLINEABLE mkCampaignFundsDatum #-}
-mkCampaignFundsDatum :: Integer ->  T.CS -> T.CS -> Integer -> Integer -> Integer -> Integer -> Integer ->  ValidatorDatum
-mkCampaignFundsDatum
+{-# INLINEABLE mkCampaignFunds_Datum #-}
+mkCampaignFunds_Datum :: Integer ->  T.CS -> T.CS -> Integer -> Integer -> Integer -> Integer -> Integer ->  ValidatorDatum
+mkCampaignFunds_Datum
     index
     campaignPolicy_CS
     campaignFundsPolicyID_CS
-    subtotal_Avalaible_FT
-    subtotal_Sold_FT
+    subtotal_Avalaible_CampaignToken
+    subtotal_Sold_CampaignToken
     subtotal_Avalaible_ADA 
     subtotal_Collected_ADA 
     minADA
      =
         CampaignFundsDatum $
-            mkCampaignFundsDatumType
+            mkCampaignFunds_DatumType
                 index
                 campaignPolicy_CS
                 campaignFundsPolicyID_CS
-                subtotal_Avalaible_FT
-                subtotal_Sold_FT
+                subtotal_Avalaible_CampaignToken
+                subtotal_Sold_CampaignToken
                 subtotal_Avalaible_ADA 
                 subtotal_Collected_ADA 
                 minADA
@@ -221,6 +228,13 @@ PlutusTx.makeIsDataIndexed
     ]
 
 --------------------------------------------------------------------------------2
+
+getPolicyRedeemerName :: Maybe PolicyRedeemer -> Maybe P.String
+getPolicyRedeemerName (Just (PolicyRedeemerMintID PolicyRedeemerMintIDType)) = Just "MintID"
+getPolicyRedeemerName (Just (PolicyRedeemerBurnID PolicyRedeemerBurnIDType)) = Just "BurnID"
+getPolicyRedeemerName _                                                      = Nothing
+
+--------------------------------------------------------------------------------22
 -- ValidatorRedeemer
 --------------------------------------------------------------------------------2
 
@@ -234,18 +248,16 @@ PlutusTx.makeIsDataIndexed ''ValidatorRedeemerUpdateMinADAType [('ValidatorRedee
 
 --------------------------------------------------------------------------------2
 
-data ValidatorRedeemerDepositType
+newtype ValidatorRedeemerDepositType
     = ValidatorRedeemerDepositType
-          { rdDate   :: LedgerApiV2.POSIXTime
-          , rdAmount :: Integer
+          { rdAmount :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerDepositType where
     {-# INLINEABLE (==) #-}
     r1 == r2 =
-        rdDate r1 == rdDate r2
-            && rdAmount r1 == rdAmount r2
+        rdAmount r1 == rdAmount r2
 
 PlutusTx.makeIsDataIndexed
     ''ValidatorRedeemerDepositType
@@ -254,18 +266,16 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------2
 
-data ValidatorRedeemerWithdrawType
+newtype ValidatorRedeemerWithdrawType
     = ValidatorRedeemerWithdrawType
-          { rwDate   :: LedgerApiV2.POSIXTime
-          , rwAmount :: Integer
+          { rwAmount :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerWithdrawType where
     {-# INLINEABLE (==) #-}
     r1 == r2 =
-        rwDate r1 == rwDate r2
-            && rwAmount r1 == rwAmount r2
+        rwAmount r1 == rwAmount r2
 
 PlutusTx.makeIsDataIndexed
     ''ValidatorRedeemerWithdrawType
@@ -274,17 +284,16 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------2
 
-data ValidatorRedeemerSellType
+newtype ValidatorRedeemerSellType
     = ValidatorRedeemerSellType
-          { rcpcDate   :: LedgerApiV2.POSIXTime
-          , rcpcAmount :: Integer
+          { rcpcAmount :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerSellType where
     {-# INLINEABLE (==) #-}
     r1 == r2 =
-        rcpcDate r1 == rcpcDate r2 && rcpcAmount r1 == rcpcAmount r2
+        rcpcAmount r1 == rcpcAmount r2
 
 PlutusTx.makeIsDataIndexed
     ''ValidatorRedeemerSellType
@@ -292,17 +301,16 @@ PlutusTx.makeIsDataIndexed
     ]
 
 --------------------------------------------------------------------------------2
-data ValidatorRedeemerGetBackType
+newtype ValidatorRedeemerGetBackType
     = ValidatorRedeemerGetBackType
-          { rcmcDate   :: LedgerApiV2.POSIXTime
-          , rcmcAmount :: Integer
+          { rcmcAmount :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerGetBackType where
     {-# INLINEABLE (==) #-}
     r1 == r2 =
-        rcmcDate r1 == rcmcDate r2 && rcmcAmount r1 == rcmcAmount r2
+        rcmcAmount r1 == rcmcAmount r2
 
 PlutusTx.makeIsDataIndexed
     ''ValidatorRedeemerGetBackType
@@ -311,21 +319,33 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------2
 
-data ValidatorRedeemerCollectType
+newtype ValidatorRedeemerCollectType
     = ValidatorRedeemerCollectType
-          { rcacDate   :: LedgerApiV2.POSIXTime
-          , rcacAmount :: Integer
+          { rcacAmount :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerCollectType where
     {-# INLINEABLE (==) #-}
     r1 == r2 =
-        rcacDate r1 == rcacDate r2 && rcacAmount r1 == rcacAmount r2
+        rcacAmount r1 == rcacAmount r2
 
 PlutusTx.makeIsDataIndexed
     ''ValidatorRedeemerCollectType
     [ ('ValidatorRedeemerCollectType, 0)
+    ]
+
+--------------------------------------------------------------------------------2
+
+data ValidatorRedeemerMergeType = ValidatorRedeemerMergeType deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
+
+instance Eq ValidatorRedeemerMergeType where
+    {-# INLINEABLE (==) #-}
+    r1 == r2 = r1 == r2
+
+PlutusTx.makeIsDataIndexed
+    ''ValidatorRedeemerMergeType
+    [ ('ValidatorRedeemerMergeType, 0)
     ]
 
 --------------------------------------------------------------------------------2
@@ -374,7 +394,7 @@ data ValidatorRedeemer
     | ValidatorRedeemerSell ValidatorRedeemerSellType
     | ValidatorRedeemerGetBack ValidatorRedeemerGetBackType
     | ValidatorRedeemerCollect ValidatorRedeemerCollectType
-    | ValidatorRedeemerMerge ValidatorRedeemerDeleteType
+    | ValidatorRedeemerMerge ValidatorRedeemerMergeType
     | ValidatorRedeemerDelete ValidatorRedeemerDeleteType
     | ValidatorRedeemerBalanceAssets ValidatorRedeemerBalanceAssetsType
     | ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType
@@ -410,6 +430,21 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------2
 
+getValidatorRedeemerName :: Maybe ValidatorRedeemer -> Maybe P.String
+getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType))     = Just "UpdateMinADA"
+getValidatorRedeemerName (Just (ValidatorRedeemerDeposit ValidatorRedeemerDepositType {}))            = Just "Deposit"
+getValidatorRedeemerName (Just (ValidatorRedeemerWithdraw ValidatorRedeemerWithdrawType {}))          = Just "Withdraw"
+getValidatorRedeemerName (Just (ValidatorRedeemerSell ValidatorRedeemerSellType {}))                  = Just "Sell"
+getValidatorRedeemerName (Just (ValidatorRedeemerGetBack ValidatorRedeemerGetBackType {}))            = Just "GetBack"
+getValidatorRedeemerName (Just (ValidatorRedeemerCollect ValidatorRedeemerCollectType {}))            = Just "Collect"
+getValidatorRedeemerName (Just (ValidatorRedeemerMerge ValidatorRedeemerMergeType))                  = Just "Merge"
+getValidatorRedeemerName (Just (ValidatorRedeemerDelete ValidatorRedeemerDeleteType))                 = Just "Delete"
+getValidatorRedeemerName (Just (ValidatorRedeemerBalanceAssets ValidatorRedeemerBalanceAssetsType))   = Just "BalanceAssets"
+getValidatorRedeemerName (Just (ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType))           = Just "Emergency"
+getValidatorRedeemerName _                                                                             = Nothing
+
+--------------------------------------------------------------------------------22
+
 mkMintIDRedeemer :: LedgerApiV2.Redeemer
 mkMintIDRedeemer =
     LedgerApiV2.Redeemer $
@@ -426,58 +461,56 @@ mkBurnIDRedeemer =
 
 mkUpdateMinADARedeemer :: LedgerApiV2.Redeemer
 mkUpdateMinADARedeemer =
-
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType
 
-mkDepositRedeemer :: LedgerApiV2.POSIXTime -> Integer -> LedgerApiV2.Redeemer
-mkDepositRedeemer date' deposit' =
+mkDepositRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkDepositRedeemer deposit' =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerDeposit $
-                ValidatorRedeemerDepositType date' deposit'
+                ValidatorRedeemerDepositType deposit'
 
-mkWithdrawRedeemer :: LedgerApiV2.POSIXTime -> Integer -> LedgerApiV2.Redeemer
-mkWithdrawRedeemer date' withdraw' =
+mkWithdrawRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkWithdrawRedeemer withdraw' =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerWithdraw $
-                ValidatorRedeemerWithdrawType date' withdraw'
+                ValidatorRedeemerWithdrawType withdraw'
 
-mkSellRedeemer :: LedgerApiV2.POSIXTime -> Integer -> LedgerApiV2.Redeemer
-mkSellRedeemer date' amount' =
+mkSellRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkSellRedeemer amount' =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerSell $
-                ValidatorRedeemerSellType date' amount'
+                ValidatorRedeemerSellType amount'
 
-mkGetBackRedeemer :: LedgerApiV2.POSIXTime -> Integer -> LedgerApiV2.Redeemer
-mkGetBackRedeemer date' amount' =
+mkGetBackRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkGetBackRedeemer amount' =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerGetBack $
-                ValidatorRedeemerGetBackType date' amount'
+                ValidatorRedeemerGetBackType amount'
 
-mkCollectRedeemer :: LedgerApiV2.POSIXTime -> Integer -> LedgerApiV2.Redeemer
-mkCollectRedeemer date' amount' =
+mkCollectRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkCollectRedeemer amount' =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerCollect $
-                ValidatorRedeemerCollectType date' amount'
+                ValidatorRedeemerCollectType amount'
+
+mkMergeRedeemer :: LedgerApiV2.Redeemer
+mkMergeRedeemer =
+    LedgerApiV2.Redeemer $
+        LedgerApiV2.toBuiltinData $
+            ValidatorRedeemerMerge ValidatorRedeemerMergeType
 
 mkDeleteRedeemer :: LedgerApiV2.Redeemer
 mkDeleteRedeemer =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerDelete ValidatorRedeemerDeleteType
-
-
-mkMergeRedeemer :: LedgerApiV2.Redeemer
-mkMergeRedeemer =
-    LedgerApiV2.Redeemer $
-        LedgerApiV2.toBuiltinData $
-            ValidatorRedeemerMerge ValidatorRedeemerDeleteType
 
 mkBalanceAssetsRedeemer :: LedgerApiV2.Redeemer
 mkBalanceAssetsRedeemer =

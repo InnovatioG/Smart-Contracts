@@ -1,61 +1,58 @@
+--------------------------------------------------------------------------------3
+{- HLINT ignore "Use camelCase"          -}
+{- HLINT ignore "Reduce duplication"          -}
+--------------------------------------------------------------------------------3
+
 {- |
 Module      : Tests.UnitTests.Main
 Description : Unit Tests.
 -}
 module Main where
+--------------------------------------------------------------------------------3
 
 -- Non-IOG imports
-
+import qualified Data.Proxy                           as DataProxy
 import           Prelude
-import qualified System.Directory                 as SystemDirectory
-import qualified Test.Tasty                       as Tasty
+import qualified Test.Tasty                           as Tasty
+import qualified Test.Tasty.Options                   as TastyOptions
+import qualified Test.Tasty.QuickCheck                as TastyQC
 
 -- Project imports
--- import           Contracts.Campaign.Funds.MintingPolicy
--- import           Contracts.Campaign.Funds.Validator
--- import           Contracts.Campaign.MintingPolicy
+import           Contracts.Campaign.Funds.MintingPolicy
+import           Contracts.Campaign.Funds.Validator
+import           Contracts.Campaign.MintingPolicy
 import           Contracts.Campaign.Validator
 import           Contracts.Protocol.MintingPolicy
 import           Contracts.Protocol.Validator
-import qualified Deploy
-import qualified Helpers.OffChain                 as OffChainHelpers
-import           TestUtils.Common                 as TestUtilsCommon
-import           TestUtils.Types                  as TestUtilsT
-import Contracts.Campaign.Transactions
+import           TestUtils.Helpers
+import           TestUtils.HelpersINNOVATIO
 
-
+--------------------------------------------------------------------------------3
 
 main :: IO ()
 main = do
-    let
-        filePath = "export/test/deploy.json"
-    maybeDeployParams <- Deploy.loadFactoryDeployParams filePath True
-    tp <- case maybeDeployParams of
-        Just params -> TestUtilsCommon.generateTestParams params
-        Nothing     -> error "Failed to load deploy parameters"
-
-    Tasty.defaultMain $
-        Tasty.testGroup
-            "Unit Tests"
-            [
-                Tasty.testGroup
-                "Contracts Tests"
-                [ Tasty.testGroup
-                    "Protocol Tests"
-                    [ protocolValidatorTests tp
-                    , protocolMPTests tp
+    putStrLn "---------------"
+    tp <- getTestParams "export/test/deploy.json"
+    numTests <- getNumTestCases 100
+    putStrLn "---------------"
+    let testGroup =
+            Tasty.testGroup "Unit Tests"
+                [ Tasty.testGroup "Contracts Tests"
+                    [ Tasty.testGroup "Protocol Tests"
+                        [ protocol_Policy_Tests tp
+                        , protocol_Validator_Tests tp
+                        ]
+                    , Tasty.testGroup "Campaign Tests"
+                        [ campaign_Policy_Tests tp
+                        , campaign_Validator_Tests tp
+                        ]
+                    , Tasty.testGroup "CampaignFunds Tests"
+                        [ campaignFunds_Policy_Tests tp
+                        , campaignFunds_Validator_Tests tp
+                        ]
                     ]
-                 , Tasty.testGroup
-                     "Campaign Tests"
-                     [ campaignValidatorTests tp
-
-                     , campaignTransactionsTests  tp
-                    --  , campaignMPTests tp
-                     ]
-                -- , Tasty.testGroup
-                --     "Campaign Funds Tests"
-                --     [ campaignFundsValidatorTests tp
-                --     , campaignFundsMPTests tp
-                --     ]
                 ]
-            ]
+
+    Tasty.defaultMainWithIngredients
+        (Tasty.includingOptions [TastyOptions.Option (DataProxy.Proxy :: DataProxy.Proxy TastyQC.QuickCheckTests)] : Tasty.defaultIngredients)
+        (Tasty.localOption (TastyQC.QuickCheckTests numTests) testGroup )

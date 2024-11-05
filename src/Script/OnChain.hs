@@ -29,14 +29,12 @@ import           PlutusTx.Prelude
 -- Import Internos
 --------------------------------------------------------------------------------2
 
-import qualified Helpers.Constants         as T
-import qualified Helpers.OnChain    as OnChainHelpers
+import qualified Constants                 as T
+import qualified Helpers.OnChain           as OnChainHelpers
 import qualified Helpers.Types             as T
-import qualified Constants        as T
-import qualified Campaign.Types       as CampaignT
-import qualified Protocol.Types   as ProtocolT
-import qualified Script.Types     as T
-import qualified Types            as T
+import qualified Protocol.Types            as ProtocolT
+import qualified Script.Types              as T
+import qualified Types                     as T
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -95,7 +93,7 @@ mkPolicyID  (T.PolicyParams !protocolPolicyID_CS) !redRaw !ctxRaw =
                             ------------------
                 T.PolicyRedeemerBurnID _ ->
                        ------------------
-                        -- it runs along with Script Validator (ValidatorRedeemerScriptDelete)
+                        -- it runs along with Script Validator (ValidatorRedeemerDelete)
                             -- traceIfFalse "not isSignedByAdmin nor isAdminTokenPresent" isSignedByAdminOrIsAdminTokenPresent
                             -- && traceIfFalse "not isValidRange" (OnChainHelpers.isValidRange info T.validTxTimeRange)
                             -- && traceIfFalse "not isBurning_ScriptIDs" isBurning_ScriptIDs
@@ -128,7 +126,7 @@ mkValidator (T.ValidatorParams !scriptPolicyID_CS !protocolPolicyID_CS)  _ !redR
     in  if
         traceIfFalse "" useThisToMakeScriptUnique
         && case redeemer of
-            T.ValidatorRedeemerScriptDelete ->
+            T.ValidatorRedeemerDelete ->
                     ------------------
                     -- it runs along with Script ID Policy (PolicyRedeemerBurnID)
                         -- traceIfFalse "not isBurningAllTokenOwnCSAnyAmount" (OnChainHelpers.isBurningAllTokenOwnCSAnyAmount ctx)
@@ -166,11 +164,11 @@ mkValidator (T.ValidatorParams !scriptPolicyID_CS !protocolPolicyID_CS)  _ !redR
                                 ctx
                                 inputsRef_TxOuts
                                 protocolID_AC
-                                ProtocolT.getProtocolDatumType
+                                ProtocolT.getProtocol_DatumType
 
                             !protocolDatum_In = case inputRef_TxOut_And_ProtocolDatum' of
                                 [inputRef_TxOut_And_ProtocolDatum] -> OnChainHelpers.getDatum_In_TxOut_And_Datum inputRef_TxOut_And_ProtocolDatum
-                                _ -> traceError "Expected exactly Protocol input ref"
+                                _                                  -> traceError "Expected exactly Protocol input ref"
 
                             !tokenAdminPolicy_CS = T.getAdminToken_CS protocolDatum_In
                             !tokenAdmin_AC = LedgerValue.AssetClass (tokenAdminPolicy_CS, T.tokenAdmin_TN)

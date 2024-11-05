@@ -1,10 +1,10 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 --------------------------------------------------------------------------------2
 {- HLINT ignore "Use camelCase"          -}
@@ -17,37 +17,36 @@ module Helpers.CLI where
 -- External Imports
 --------------------------------------------------------------------------------2
 
-import qualified Data.Fixed as DataFixed (Fixed (MkFixed), Pico)
-import qualified Data.Functor as DataFunctor
-import qualified Data.List as DataList
-import qualified Data.Maybe as DataMaybe
-import qualified Data.String as DataString (IsString (fromString))
-import qualified Data.Text as DataText
+import qualified Data.Fixed                as DataFixed (Fixed (MkFixed), Pico)
+import qualified Data.Functor              as DataFunctor
+import qualified Data.List                 as DataList
+import qualified Data.Maybe                as DataMaybe
+import qualified Data.String               as DataString (IsString (fromString))
+import qualified Data.Text                 as DataText
 import qualified Data.Text.Internal.Search as DataTextSearch
-import qualified Data.Time.Clock as DataTime
-import qualified Data.Time.Clock as DataTimeClock (secondsToNominalDiffTime)
-import qualified Data.Time.Clock.POSIX as DataTimeClockPOSIX (posixSecondsToUTCTime)
-import qualified Data.Time.Clock.POSIX as DataTimePOSIX
-import qualified Data.Time.Clock.POSIX as POSIX (utcTimeToPOSIXSeconds)
-import qualified Data.Time.Format as DataTimeFormat (defaultTimeLocale, formatTime)
+import qualified Data.Time.Clock           as DataTime
+import qualified Data.Time.Clock           as DataTimeClock (secondsToNominalDiffTime)
+import qualified Data.Time.Clock.POSIX     as DataTimeClockPOSIX (posixSecondsToUTCTime)
+import qualified Data.Time.Clock.POSIX     as DataTimePOSIX
+import qualified Data.Time.Clock.POSIX     as POSIX (utcTimeToPOSIXSeconds)
+import qualified Data.Time.Format          as DataTimeFormat (defaultTimeLocale, formatTime)
 import qualified Ledger
-import qualified Ledger.Bytes as LedgerBytes
-import qualified Plutus.V2.Ledger.Api as LedgerApiV2
-import qualified PlutusTx.Builtins.Class as TxBuiltinsClass
-import PlutusTx.Prelude hiding (unless)
-import qualified System.Directory as SystemDirectory
-import qualified System.FilePath.Posix as SystemFilePathPosix
-import qualified Data.Text as T
-import qualified Text.Hex as TextHex
-import qualified Text.Read as TextRead (readMaybe)
-import qualified Prelude as P
+import qualified Ledger.Bytes              as LedgerBytes
+import qualified Plutus.V2.Ledger.Api      as LedgerApiV2
+import qualified PlutusTx.Builtins.Class   as TxBuiltinsClass
+import           PlutusTx.Prelude          hiding (unless)
+import qualified Prelude                   as P
+import qualified System.Directory          as SystemDirectory
+import qualified System.FilePath.Posix     as SystemFilePathPosix
+import qualified Text.Hex                  as TextHex
+import qualified Text.Read                 as TextRead (readMaybe)
 
 --------------------------------------------------------------------------------2
 -- Import Internos
 --------------------------------------------------------------------------------2
 
-import qualified Helpers.OffChain as OffChainHelpers
-import qualified Helpers.OnChain as OnChainHelpers
+import qualified Helpers.OffChain          as OffChainHelpers
+import qualified Helpers.OnChain           as OnChainHelpers
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -292,15 +291,15 @@ getPkh fieldName = do
     str <- P.getLine
     P.putStrLn "--------------------------------"
     if P.null str
-        then do 
-            getPkh fieldName 
+        then do
+            getPkh fieldName
         else case LedgerBytes.fromHex (DataString.fromString (removeHexPrefix str)) of
               Right (LedgerBytes.LedgerBytes bytes) ->
                   return $ LedgerApiV2.PubKeyHash bytes
               Left _ -> do
                   P.putStrLn "Invalid input, try again"
                   P.putStrLn "--------------------------------"
-                  getPkh fieldName 
+                  getPkh fieldName
 
 
 --------------------------------------------------------------------------------2
@@ -325,11 +324,11 @@ getCurrencySymbol defCS_Str = do
 
     let isADA = case cS_Str of
             "ADA" -> True
-            _ -> False
+            _     -> False
         hex = TextHex.decodeHex $ OffChainHelpers.stringToStrictText cS_Str
         isHexOk hex' = case hex' of
             Nothing -> False
-            _ -> True
+            _       -> True
         isCS_56HEX_OK = length cS_Str P.== 56 && isHexOk hex
 
         getCS :: P.IO LedgerApiV2.CurrencySymbol
@@ -387,7 +386,7 @@ selectFolder path filterFileName = do
                     filter
                         ( \n -> case DataTextSearch.indices (DataString.fromString filterFileName) (DataString.fromString n) of
                             (_ : _) -> True
-                            [] -> False
+                            []      -> False
                         )
                         files
         ----------------

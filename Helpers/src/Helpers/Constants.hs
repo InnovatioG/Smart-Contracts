@@ -14,7 +14,6 @@ module Helpers.Constants where
 
 import qualified Cardano.Node.Emulator.Params as CardanoNodeEmulatorParams
 import qualified Ledger
-import qualified Plutus.V2.Ledger.Api         as LedgerApiV2
 
 --------------------------------------------------------------------------------2
 -- Import Internos

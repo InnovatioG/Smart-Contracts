@@ -22,7 +22,6 @@ module Campaign.Types where
 import qualified Data.Aeson           as DataAeson (FromJSON, ToJSON)
 import qualified Data.OpenApi.Schema  as DataOpenApiSchema (ToSchema)
 import qualified GHC.Generics         as GHCGenerics (Generic)
-import qualified Ledger
 import qualified Plutus.V2.Ledger.Api as LedgerApiV2
 import qualified PlutusTx
 import           PlutusTx.Prelude
@@ -36,6 +35,7 @@ import qualified Schema
 import qualified Constants            as T
 import qualified Helpers.Types        as T
 import qualified Types                as T
+import qualified Helpers.OnChain as OnChainHelpers
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -139,10 +139,10 @@ data CampaignDatumType
           , cdCampaignFundsPolicyID_CS :: T.CS
           , cdAdmins                   :: [T.WalletPaymentPKH]
           , cdTokenAdminPolicy_CS      :: LedgerApiV2.CurrencySymbol
-          , cdMint_CampaignFT          :: Bool
-          , cdCampaignFT_CS            :: T.CS
-          , cdCampaignFT_TN            :: T.TN
-          , cdCampaignFT_PriceADA      :: Integer
+          , cdMint_CampaignToken          :: Bool
+          , cdCampaignToken_CS            :: T.CS
+          , cdCampaignToken_TN            :: T.TN
+          , cdCampaignToken_PriceADA      :: Integer
           , cdRequestedMaxADA          :: Integer
           , cdRequestedMinADA          :: Integer
           , cdFundedADA                :: Integer
@@ -165,10 +165,10 @@ instance Eq CampaignDatumType where
         && cdCampaignFundsPolicyID_CS ps1 == cdCampaignFundsPolicyID_CS ps2
         && cdAdmins ps1 == cdAdmins ps2
         && cdTokenAdminPolicy_CS ps1 == cdTokenAdminPolicy_CS ps2
-        && cdMint_CampaignFT ps1 == cdMint_CampaignFT ps2
-        && cdCampaignFT_CS ps1 == cdCampaignFT_CS ps2
-        && cdCampaignFT_TN ps1 == cdCampaignFT_TN ps2
-        && cdCampaignFT_PriceADA ps1 == cdCampaignFT_PriceADA ps2
+        && cdMint_CampaignToken ps1 == cdMint_CampaignToken ps2
+        && cdCampaignToken_CS ps1 == cdCampaignToken_CS ps2
+        && cdCampaignToken_TN ps1 == cdCampaignToken_TN ps2
+        && cdCampaignToken_PriceADA ps1 == cdCampaignToken_PriceADA ps2
         && cdRequestedMaxADA ps1 == cdRequestedMaxADA ps2
         && cdRequestedMinADA ps1 == cdRequestedMinADA ps2
         && cdFundedADA ps1 == cdFundedADA ps2
@@ -203,9 +203,15 @@ instance Eq ValidatorDatum where
 
 PlutusTx.makeIsDataIndexed ''ValidatorDatum [('CampaignDatum, 0)]
 
-{-# INLINABLE getCampaignDatumType #-}
-getCampaignDatumType :: ValidatorDatum -> CampaignDatumType
-getCampaignDatumType (CampaignDatum sdType) = sdType
+{-# INLINABLE getCampaign_DatumType #-}
+getCampaign_DatumType :: ValidatorDatum -> CampaignDatumType
+getCampaign_DatumType (CampaignDatum sdType) = sdType
+
+{-# INLINEABLE getCampaign_DatumType_From_UTxO #-}
+getCampaign_DatumType_From_UTxO :: LedgerApiV2.TxOut -> CampaignDatumType
+getCampaign_DatumType_From_UTxO utxo = case OnChainHelpers.getInlineDatum_From_TxOut @ValidatorDatum utxo of
+                    Nothing     -> P.error "No Campaign Datum found"
+                    Just datum' -> getCampaign_DatumType datum'
 
 instance T.ShowDatum ValidatorDatum where
   showCborAsDatumType cbor =
@@ -215,8 +221,8 @@ instance T.ShowDatum ValidatorDatum where
 
 --------------------------------------------------------------------------------2
 
-{-# INLINABLE mkCampaignDatumType #-}
-mkCampaignDatumType ::
+{-# INLINABLE mkCampaign_DatumType #-}
+mkCampaign_DatumType ::
         T.CS
     -> T.CS
     -> [T.WalletPaymentPKH]
@@ -237,15 +243,15 @@ mkCampaignDatumType ::
     -> Integer
     -> Integer
     -> CampaignDatumType
-mkCampaignDatumType
+mkCampaign_DatumType
     campaignPolicy_CS
     campaignFundsPolicyID_CS
     admins
     tokenAdminPolicy_CS
-    mint_CampaignFT
-    campaignFT_CS
-    campaignFT_TN
-    campaignFT_PriceADA
+    mint_CampaignToken
+    campaignToken_CS
+    campaignToken_TN
+    campaignToken_PriceADA
     requestedMaxADA
     requestedMinADA
     fundedADA
@@ -266,10 +272,10 @@ mkCampaignDatumType
             , cdCampaignFundsPolicyID_CS   =  campaignFundsPolicyID_CS
             , cdAdmins                     =  adminsOrdered
             , cdTokenAdminPolicy_CS        =  tokenAdminPolicy_CS
-            , cdMint_CampaignFT            =  mint_CampaignFT
-            , cdCampaignFT_CS              =  campaignFT_CS
-            , cdCampaignFT_TN              =  campaignFT_TN
-            , cdCampaignFT_PriceADA        =  campaignFT_PriceADA
+            , cdMint_CampaignToken            =  mint_CampaignToken
+            , cdCampaignToken_CS              =  campaignToken_CS
+            , cdCampaignToken_TN              =  campaignToken_TN
+            , cdCampaignToken_PriceADA        =  campaignToken_PriceADA
             , cdRequestedMaxADA            =  requestedMaxADA
             , cdRequestedMinADA            =  requestedMinADA
             , cdFundedADA                   =  fundedADA
@@ -283,8 +289,8 @@ mkCampaignDatumType
             , cdMinADA                     =  minADA
             }
 
-{-# INLINABLE mkFundDatum #-}
-mkFundDatum ::
+{-# INLINABLE mkCampaign_Datum #-}
+mkCampaign_Datum ::
         T.CS
     -> T.CS
     -> [T.WalletPaymentPKH]
@@ -305,15 +311,15 @@ mkFundDatum ::
     -> Integer
     -> Integer
     -> ValidatorDatum
-mkFundDatum
+mkCampaign_Datum
     campaignPolicy_CS
     campaignFundsPolicyID_CS
     admins
     tokenAdminPolicy_CS
-    mint_CampaignFT
-    campaignFT_CS
-    campaignFT_TN
-    campaignFT_PriceADA
+    mint_CampaignToken
+    campaignToken_CS
+    campaignToken_TN
+    campaignToken_PriceADA
     requestedMaxADA
     requestedMinADA
     fundedADA
@@ -326,15 +332,15 @@ mkFundDatum
     fundsIndex
     minADA =
   CampaignDatum
-    $ mkCampaignDatumType
+    $ mkCampaign_DatumType
         campaignPolicy_CS
         campaignFundsPolicyID_CS
         admins
         tokenAdminPolicy_CS
-        mint_CampaignFT
-        campaignFT_CS
-        campaignFT_TN
-        campaignFT_PriceADA
+        mint_CampaignToken
+        campaignToken_CS
+        campaignToken_TN
+        campaignToken_PriceADA
         requestedMaxADA
         requestedMinADA
         fundedADA
@@ -374,50 +380,60 @@ PlutusTx.makeIsDataIndexed
     ''PolicyRedeemerBurnIDType
     [('PolicyRedeemerBurnIDType, 0)]
 
-data PolicyRedeemerMintFTType = PolicyRedeemerMintFTType deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
+data PolicyRedeemerMintCampaignTokenType = PolicyRedeemerMintCampaignTokenType deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
-instance Eq PolicyRedeemerMintFTType where
+instance Eq PolicyRedeemerMintCampaignTokenType where
     {-# INLINABLE (==) #-}
     r1 == r2 = r1 == r2
 
 PlutusTx.makeIsDataIndexed
-    ''PolicyRedeemerMintFTType
-    [('PolicyRedeemerMintFTType, 0)]
+    ''PolicyRedeemerMintCampaignTokenType
+    [('PolicyRedeemerMintCampaignTokenType, 0)]
 
-data PolicyRedeemerBurnFTType = PolicyRedeemerBurnFTType deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
+data PolicyRedeemerBurnCampaignTokenType = PolicyRedeemerBurnCampaignTokenType deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
-instance Eq PolicyRedeemerBurnFTType where
+instance Eq PolicyRedeemerBurnCampaignTokenType where
     {-# INLINABLE (==) #-}
     r1 == r2 = r1 == r2
 
 PlutusTx.makeIsDataIndexed
-    ''PolicyRedeemerBurnFTType
-    [('PolicyRedeemerBurnFTType, 0)]
+    ''PolicyRedeemerBurnCampaignTokenType
+    [('PolicyRedeemerBurnCampaignTokenType, 0)]
 
 data PolicyRedeemer
     = PolicyRedeemerMintID PolicyRedeemerMintIDType
     | PolicyRedeemerBurnID PolicyRedeemerBurnIDType
-    | PolicyRedeemerMintFT PolicyRedeemerMintFTType
-    | PolicyRedeemerBurnFT PolicyRedeemerBurnFTType
+    | PolicyRedeemerMintCampaignToken PolicyRedeemerMintCampaignTokenType
+    | PolicyRedeemerBurnCampaignToken PolicyRedeemerBurnCampaignTokenType
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq PolicyRedeemer where
     {-# INLINABLE (==) #-}
     PolicyRedeemerMintID rmtx1 == PolicyRedeemerMintID rmtx2 = rmtx1 == rmtx2
     PolicyRedeemerBurnID rmtx1 == PolicyRedeemerBurnID rmtx2 = rmtx1 == rmtx2
-    PolicyRedeemerMintFT rmtx1 == PolicyRedeemerMintFT rmtx2 = rmtx1 == rmtx2
-    PolicyRedeemerBurnFT rmtx1 == PolicyRedeemerBurnFT rmtx2 = rmtx1 == rmtx2
+    PolicyRedeemerMintCampaignToken rmtx1 == PolicyRedeemerMintCampaignToken rmtx2 = rmtx1 == rmtx2
+    PolicyRedeemerBurnCampaignToken rmtx1 == PolicyRedeemerBurnCampaignToken rmtx2 = rmtx1 == rmtx2
     _ == _                                                   = False
 
 PlutusTx.makeIsDataIndexed
     ''PolicyRedeemer
     [ ('PolicyRedeemerMintID, 0)
     , ('PolicyRedeemerBurnID, 1)
-    , ('PolicyRedeemerMintFT, 2)
-    , ('PolicyRedeemerBurnFT, 3)
+    , ('PolicyRedeemerMintCampaignToken, 2)
+    , ('PolicyRedeemerBurnCampaignToken, 3)
     ]
 
+
 --------------------------------------------------------------------------------2
+
+getPolicyRedeemerName :: Maybe PolicyRedeemer -> Maybe P.String
+getPolicyRedeemerName (Just (PolicyRedeemerMintID PolicyRedeemerMintIDType)) = Just "MintID"
+getPolicyRedeemerName (Just (PolicyRedeemerBurnID PolicyRedeemerBurnIDType)) = Just "BurnID"
+getPolicyRedeemerName (Just (PolicyRedeemerMintCampaignToken PolicyRedeemerMintCampaignTokenType)) = Just "MintCampaignToken"
+getPolicyRedeemerName (Just (PolicyRedeemerBurnCampaignToken PolicyRedeemerBurnCampaignTokenType)) = Just "BurnCampaignToken"
+getPolicyRedeemerName _                                                      = Nothing
+
+--------------------------------------------------------------------------------22
 -- ValidatorRedeemer
 --------------------------------------------------------------------------------2
 data ValidatorRedeemerDatumUpdateType = ValidatorRedeemerDatumUpdateType deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
@@ -481,17 +497,16 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------2
 
-data ValidatorRedeemerFundsCollectType
+newtype ValidatorRedeemerFundsCollectType
     = ValidatorRedeemerFundsCollectType
-          { rfcDate   :: LedgerApiV2.POSIXTime
-          , rfcAmount :: Integer
+          { rfcAmount :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerFundsCollectType where
     {-# INLINABLE (==) #-}
     r1 == r2 =
-        rfcDate r1 == rfcDate r2 && rfcAmount r1 == rfcAmount r2
+        rfcAmount r1 == rfcAmount r2
 
 PlutusTx.makeIsDataIndexed
     ''ValidatorRedeemerFundsCollectType
@@ -641,17 +656,35 @@ PlutusTx.makeIsDataIndexed
     ]
 --------------------------------------------------------------------------------2
 
-mkMintFTRedeemer :: LedgerApiV2.Redeemer
-mkMintFTRedeemer =
-    LedgerApiV2.Redeemer $
-        LedgerApiV2.toBuiltinData $
-            PolicyRedeemerMintFT PolicyRedeemerMintFTType
+getValidatorRedeemerName :: Maybe ValidatorRedeemer -> Maybe P.String
+getValidatorRedeemerName (Just (ValidatorRedeemerDatumUpdate ValidatorRedeemerDatumUpdateType))             = Just "DatumUpdate"
+getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType))           = Just "UpdateMinADA"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsAdd ValidatorRedeemerFundsAddType))                   = Just "FundsAdd"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsMerge (ValidatorRedeemerFundsMergeType _)))           = Just "FundsMerge"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsDelete (ValidatorRedeemerFundsDeleteType _)))         = Just "FundsDelete"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsCollect (ValidatorRedeemerFundsCollectType _)))     = Just "FundsCollect"
+getValidatorRedeemerName (Just (ValidatorRedeemerInitializeCampaign ValidatorRedeemerInitializeCampaignType)) = Just "InitializeCampaign"
+getValidatorRedeemerName (Just (ValidatorRedeemerReachedCampaign ValidatorRedeemerReachedCampaignType))     = Just "ReachedCampaign"
+getValidatorRedeemerName (Just (ValidatorRedeemerNotReachedCampaign ValidatorRedeemerNotReachedCampaignType)) = Just "NotReachedCampaign"
+getValidatorRedeemerName (Just (ValidatorRedeemerMilestoneAprobe (ValidatorRedeemerMilestoneAprobeType _))) = Just "MilestoneAprobe"
+getValidatorRedeemerName (Just (ValidatorRedeemerMilestoneReprobe (ValidatorRedeemerMilestoneReprobeType _))) = Just "MilestoneReprobe"
+getValidatorRedeemerName (Just (ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType))                   = Just "Emergency"
+getValidatorRedeemerName (Just (ValidatorRedeemerDelete ValidatorRedeemerDeleteType))                         = Just "Delete"
+getValidatorRedeemerName _                                                                                  = Nothing
 
-mkBurnFTRedeemer :: LedgerApiV2.Redeemer
-mkBurnFTRedeemer =
+--------------------------------------------------------------------------------22
+
+mkMintCampaignTokenRedeemer :: LedgerApiV2.Redeemer
+mkMintCampaignTokenRedeemer =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
-            PolicyRedeemerBurnFT PolicyRedeemerBurnFTType
+            PolicyRedeemerMintCampaignToken PolicyRedeemerMintCampaignTokenType
+
+mkBurnCampaignTokenRedeemer :: LedgerApiV2.Redeemer
+mkBurnCampaignTokenRedeemer =
+    LedgerApiV2.Redeemer $
+        LedgerApiV2.toBuiltinData $
+            PolicyRedeemerBurnCampaignToken PolicyRedeemerBurnCampaignTokenType
 
 mkMintIDRedeemer :: LedgerApiV2.Redeemer
 mkMintIDRedeemer =
@@ -697,11 +730,11 @@ mkCampaignFundsDeleteRedeemer quantity =
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerFundsDelete $ ValidatorRedeemerFundsDeleteType quantity
 
-mkCampaignFundsCollectRedeemer :: LedgerApiV2.POSIXTime -> Integer -> LedgerApiV2.Redeemer
-mkCampaignFundsCollectRedeemer date' amount' =
+mkCampaignFundsCollectRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkCampaignFundsCollectRedeemer amount' =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
-            ValidatorRedeemerFundsCollect $ ValidatorRedeemerFundsCollectType date' amount'
+            ValidatorRedeemerFundsCollect $ ValidatorRedeemerFundsCollectType amount'
 
 mkInitializeCampaignRedeemer :: LedgerApiV2.Redeemer
 mkInitializeCampaignRedeemer =

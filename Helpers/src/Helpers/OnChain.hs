@@ -47,7 +47,7 @@ data SignedMessageCheckError
     -- ^ The signature did not match the public key
     deriving (Generic.Generic, P.Show)
 
-{-# INLINABLE checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS #-}
+{-# INLINEABLE checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS #-}
 -- | Verify the signature of a message
 checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS
   :: Ledger.PaymentPubKey
@@ -68,7 +68,7 @@ checkSignature_NO_COMPILA_ONCHAIN_PORQUE_CASE_OF_BBS !paymentPubKey !signedMsg !
             then Right ()
             else Left $ SignatureMismatch paymentPubKey signature
 
-{-# INLINABLE checkSignatureBBS #-}
+{-# INLINEABLE checkSignatureBBS #-}
 -- | Verify the signature of a message
 checkSignatureBBS
   :: LedgerApiV2.BuiltinByteString
@@ -322,7 +322,6 @@ enumFromTo start end
     | start > end = []
     | otherwise   = start : enumFromTo (start + 1) end
 
-
 --------------------------------------------------------------------------------2
 
 {-# INLINEABLE isElement #-}
@@ -507,13 +506,30 @@ getValue_With_AC_InValue !v !ac =
 getAmt_With_AC_InValue :: LedgerValue.Value -> LedgerValue.AssetClass -> Integer
 getAmt_With_AC_InValue !v !ac = LedgerValue.assetClassValueOf v ac
 
---------------------------------------------------------------------------------2
+------------------------------------------------------------------------------2
 
 -- | Get the total value of lovelace in the 'Value'.
 {-# INLINEABLE getValueOfLovelace #-}
 getValueOfLovelace :: LedgerValue.Value -> Integer
 getValueOfLovelace !v =
     LedgerAda.getLovelace $ LedgerAda.fromValue v
+
+{-# INLINEABLE getADAfromValue #-}
+-- | Get the 'Ada' in the given 'Value'.
+getADAfromValue :: LedgerApiV2.Value -> Integer
+getADAfromValue v =  LedgerValue.valueOf v LedgerValue.adaSymbol LedgerValue.adaToken
+
+{-# INLINEABLE createADAValue #-}
+createADAValue :: Integer -> LedgerApiV2.Value
+createADAValue = LedgerAda.lovelaceValueOf
+
+{-# INLINEABLE getADAValueInValue #-}
+getADAValueInValue :: LedgerApiV2.Value -> LedgerApiV2.Value
+getADAValueInValue v =  createADAValue $ LedgerValue.valueOf v LedgerValue.adaSymbol LedgerValue.adaToken
+
+{-# INLINEABLE adaAssetClass #-}
+adaAssetClass :: LedgerValue.AssetClass
+adaAssetClass = LedgerValue.AssetClass (LedgerValue.adaSymbol , LedgerValue.adaToken)
 
 --------------------------------------------------------------------------------2
 
@@ -664,14 +680,14 @@ isToken_Minting_With_CS !cs !info =
 isToken_Burning_With_AC_AndAmt :: LedgerValue.AssetClass -> Integer -> LedgerContextsV2.TxInfo -> Bool
 isToken_Burning_With_AC_AndAmt !ac !amt !info =
     let !mintingValue = LedgerApiV2.txInfoMint info
-    in  isToken_With_AC_AndAmt_InValue mintingValue ac amt
+    in  isToken_With_AC_AndAmt_InValue mintingValue ac (negate amt)
 
 -- | Check if there is any token burning with right currecy symbol and amount.
 {-# INLINEABLE isToken_Burning_With_CS_AndAmt #-}
 isToken_Burning_With_CS_AndAmt :: LedgerValue.CurrencySymbol -> Integer -> LedgerContextsV2.TxInfo -> Bool
 isToken_Burning_With_CS_AndAmt !cs !amt !info =
     let !mintingValue = LedgerApiV2.txInfoMint info
-    in  isToken_With_CS_AndAmt_InValue mintingValue cs amt
+    in  isToken_With_CS_AndAmt_InValue mintingValue cs (negate amt)
 
 --------------------------------------------------------------------------------22
 
@@ -928,20 +944,9 @@ isEqValuesAndDatums !valuesAndDatums1 !valuesAndDatums2 =
 
 -- | tienen que estar normalizados, o sea, mismo orden y mismos campos
 {-# INLINEABLE isUnsafeEqDatums #-}
-isUnsafeEqDatums :: (Eq d, PlutusTx.ToData d) => d -> d -> Bool
+isUnsafeEqDatums :: (PlutusTx.ToData d) => d -> d -> Bool
 isUnsafeEqDatums !dat1 !dat2 =
-#ifdef NO_USE_SERIALISE_DATA
-    dat1 == dat2
-#else
     TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat1) == TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat2)
-#endif
-
-{-# INLINEABLE isUnsafeEqDatumsCostly #-}
-isUnsafeEqDatumsCostly :: (Eq d, PlutusTx.ToData d)=> d -> d -> Bool
-isUnsafeEqDatumsCostly !dat1 !dat2 =
-   isUnsafeEqDatums dat1 dat2
-    -- TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat1) == TxBuiltins.serialiseData (LedgerApiV2.toBuiltinData dat2)
-
 
 --------------------------------------------------------------------------------2
 
@@ -1003,17 +1008,6 @@ sumValues :: [LedgerApiV2.Value] -> LedgerApiV2.Value
 sumValues  = foldl (<>) (LedgerAda.lovelaceValueOf 0)
 
 --------------------------------------------------------------------------------22
-
-{-# INLINEABLE getADAfromValue #-}
--- | Get the 'Ada' in the given 'Value'.
-getADAfromValue :: LedgerApiV2.Value -> Integer
-getADAfromValue v =  LedgerValue.valueOf v LedgerValue.adaSymbol LedgerValue.adaToken
-
-{-# INLINEABLE createADAValue #-}
-createADAValue :: Integer -> LedgerApiV2.Value
-createADAValue = LedgerAda.lovelaceValueOf
-
---------------------------------------------------------------------------------
 
 {-# INLINEABLE calculateMinADA #-}
 calculateMinADA :: Integer -> Integer -> Integer -> Bool -> Integer
@@ -1162,6 +1156,21 @@ getUnsafe_Own_Input_TxOut_V2 :: LedgerContextsV2.ScriptPurpose -> [LedgerContext
 getUnsafe_Own_Input_TxOut_V2 (LedgerContextsV2.Spending o_ref) txInfoInputs = LedgerApiV2.txInInfoResolved (getUnsafe_TxInInfo_By_TxOutRef txInfoInputs o_ref)
 getUnsafe_Own_Input_TxOut_V2 _                                 _ = traceError "getUnsafe_Own_Input_TxOut_V2"
 
+-- --------------------------------------------------------------------------------2
+
+{-# INLINEABLE getInlineDatum_From_TxOut #-}
+getInlineDatum_From_TxOut :: forall datum. PlutusTx.FromData datum => LedgerApiV2.TxOut -> Maybe datum
+getInlineDatum_From_TxOut !txOut =
+    case LedgerApiV2.txOutDatum txOut of
+        (LedgerApiV2.OutputDatum !datum) -> LedgerApiV2.fromBuiltinData @datum $ LedgerApiV2.getDatum datum
+        _                                -> Nothing
+
+{-# INLINEABLE getUnsafe_InlineDatum_From_TxOut #-}
+getUnsafe_InlineDatum_From_TxOut :: forall datum. PlutusTx.UnsafeFromData datum => LedgerContextsV2.ScriptContext -> LedgerApiV2.TxOut -> datum
+getUnsafe_InlineDatum_From_TxOut _  !txOut =
+    case LedgerTxV2.txOutDatum txOut of
+        (LedgerTxV2.OutputDatum !datum) -> LedgerApiV2.unsafeFromBuiltinData @datum $ LedgerApiV2.getDatum datum
+        _                               -> traceError "getUnsafe_InlineDatum_From_TxOut"
 
 -- --------------------------------------------------------------------------------2
 

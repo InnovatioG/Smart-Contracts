@@ -9,43 +9,38 @@ license:       Apache-2.0
 license-files: LICENSE
 
 ---------------------------------
-flag no-use-serialize-onchain
-  description:
-    Use serialize data on chain code
+flag verbose
+  description: Enable verbose output
   default:     False
   manual:      True
-
 ---------------------------------
 flag defer-plugin-errors
   description:
     Defer errors from the plugin, useful for things like Haddock that can't handle it.
-  default:     False
+  --TODO: set to False in production
+  default:     True
   manual:      True
-
 ---------------------------------
 -- Define a flag for controlling UPLC dumping
 flag dump-uplc
   description: Enable dumping of UPLC files
   default:     False
   manual:      True
-
 ---------------------------------
 common warnings-config
   ghc-options:
-    -Wall -Wnoncanonical-monad-instances -Wno-unused-packages 
-    -- -Wunused-packages
-    -Wincomplete-uni-patterns -Wincomplete-record-updates
-    -Wredundant-constraints -Widentities -Wunused-matches
-    -Wunused-binds -Wno-unused-imports -fno-warn-orphans
-
+    -Wall -Wnoncanonical-monad-instances -Wincomplete-uni-patterns
+    -Wincomplete-record-updates -Wredundant-constraints -Widentities
+    -Wunused-matches -Wunused-binds -Wno-unused-packages
+    -Wunused-imports -fno-warn-orphans -Wunrecognised-pragmas
 ---------------------------------
 common plutus-tx-config
   ghc-options:
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
-    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
+    -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-spec-constr -fno-specialise
+    -fno-strictness -fno-unbox-strict-fields
+    -fno-unbox-small-strict-fields -fno-full-laziness
     -fno-expose-all-unfoldings
-
   ---------------------------------
   -- DEFAULT GHC RECOMENDATION:
   -- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx
@@ -97,7 +92,8 @@ common plutus-tx-config
   ---------------------------------
   -- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx#extensions
   ---------------------------------
-  default-extensions: Strict
+  -- TODO: con esto activado de forma general no compila LedgerApiV2.unsafeFromBuiltinData 
+  -- default-extensions: Strict
 
 ---------------------------------
 common common-all-deps-and-languange
@@ -164,35 +160,40 @@ common common-deps-main-library
     , plutus-tx
     , plutus-tx-constraints
     , plutus-tx-plugin
-
+    , QuickCheck
+    , tasty
+    , tasty-quickcheck
 ---------------------------------
 common common-deps-test-suites
-  flags: +no-use-serialize-onchain
+  if flag(verbose)
+    cpp-options: -DVERBOSE
   build-depends:
-    , base
+   , cassava
     , mtl
     , plutonomy
     , plutus-contract
     , plutus-core
     , plutus-ledger
     , plutus-ledger-api
+    , plutus-ledger-constraints
     , plutus-script-utils
     , plutus-simple-model
     , plutus-tx
     , plutus-tx-plugin
-    , process
     , QuickCheck
     , quickcheck-instances
+    , regex-compat
+    , regex-tdfa
     , tasty
     , tasty-hunit
     , tasty-quickcheck
     , transformers
-
+    , vector
+    , xlsx
 ---------------------------------
 library
   import:
     common-all-deps-and-languange, common-deps-main-library, plutus-tx-config, warnings-config
-
   build-depends:   cardano-helpers
   hs-source-dirs:  src
   exposed-modules:
@@ -211,42 +212,38 @@ library
     Script.OnChain
     Script.Types
     Types
-
--- Generic.CLIHelpers
--- Generic.Constants
--- Generic.DeployHelpers
--- Generic.EmulatorHelpers
--- Generic.OffChainEval
--- Generic.OffChainEvalTesting
--- Generic.OffChainHelpers
--- Generic.OnChainHelpers
--- Generic.PABHelpers
--- Generic.Types
 ---------------------------------
 test-suite InnovatioFounderUnitTests
   import:
     common-all-deps-and-languange,  common-deps-test-suites, plutus-tx-config, warnings-config
-
-  build-depends:  cardano-helpers
   type:           exitcode-stdio-1.0
   main-is:        Main.hs
   hs-source-dirs: tests/Tests/UnitTests tests
-  build-depends:  innovatio-founder
+  build-depends:  
+    cardano-helpers,
+    innovatio-founder 
   other-modules:
-    Contracts.Campaign.Transactions
+    Contracts.Campaign.Funds.MintingPolicy
+    Contracts.Campaign.Funds.Validator
+    Contracts.Campaign.MintingPolicy
     Contracts.Campaign.Validator
-    Contracts.Protocol.Data
     Contracts.Protocol.MintingPolicy
     Contracts.Protocol.Validator
-    TestUtils.Common
     TestUtils.Constants
+    TestUtils.Contracts.InitialData
+    TestUtils.Contracts.TxContext.Campaign
+    TestUtils.Contracts.TxContext.CampaignFunds
+    TestUtils.Contracts.TxContext.Protocol
+    TestUtils.Helpers
+    TestUtils.HelpersINNOVATIO
+    TestUtils.QuickCheckGen.QuickCheckGen
+    TestUtils.QuickCheckGen.QuickCheckGenINNOVATIO
+    TestUtils.TestContext.Asserts
+    TestUtils.TestContext.Evaluate
+    TestUtils.TestContext.Helpers
     TestUtils.Types
+    TestUtils.TypesINNOVATIO
 
--- Contracts.Campaign.Data
--- Contracts.Campaign.MintingPolicy
--- Contracts.Campaign.Funds.Validator
--- Contracts.Campaign.Funds.MintingPolicy
--- Contracts.Campaign.Funds.Data
 ---------------------------------
 executable deploy
   import:

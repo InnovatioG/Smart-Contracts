@@ -8,9 +8,8 @@ copyright:     © 2024 Manuel Padilla
 license:       Apache-2.0
 
 ---------------------------------
-flag no-use-serialize-onchain
-  description:
-    Use serialize data on chain code
+flag verbose
+  description: Enable verbose output
   default:     False
   manual:      True
 
@@ -19,7 +18,8 @@ flag defer-plugin-errors
   description:
     Defer errors from the plugin, useful for things like Haddock that can't handle it.
 
-  default:     False
+  --TODO: set to False in production
+  default:     True
   manual:      True
 
 ---------------------------------
@@ -32,12 +32,19 @@ flag dump-uplc
 ---------------------------------
 common warnings-config
   ghc-options:
-    -Wall -Wnoncanonical-monad-instances
-    -Wno-unused-packages 
-    -- -Wunused-packages
-    -Wincomplete-uni-patterns -Wincomplete-record-updates
-    -Wredundant-constraints -Widentities -Wunused-matches
-    -Wunused-binds -Wno-unused-imports -fno-warn-orphans
+    -Wall -Wnoncanonical-monad-instances -Wincomplete-uni-patterns
+    -Wincomplete-record-updates -Wredundant-constraints -Widentities
+    -Wunused-matches -Wunused-binds -Wno-unused-packages
+    -Wunused-imports -fno-warn-orphans -Wunrecognised-pragmas
+
+---------------------------------
+common plutus-tx-config
+  ghc-options:
+    -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-spec-constr -fno-specialise
+    -fno-strictness -fno-unbox-strict-fields
+    -fno-unbox-small-strict-fields -fno-full-laziness
+    -fno-expose-all-unfoldings
 
 ---------------------------------
 -- DEFAULT GHC RECOMENDATION:
@@ -74,14 +81,6 @@ common warnings-config
 -- -fplugin-opt PlutusTx.Plugin:typecheck
 -- -fplugin-opt PlutusTx.Plugin:verbosity=Quiet
 ---------------------------------
-common plutus-tx-config
-  ghc-options:
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
-    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
-    -fno-expose-all-unfoldings
-
-  ---------------------------------
   ghc-options:
 
   ---------------------------------
@@ -92,11 +91,10 @@ common plutus-tx-config
   if flag(dump-uplc)
     ghc-options: -fplugin-opt PlutusTx.Plugin:dump-uplc
 
-  ---------------------------------
-  -- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx#extensions
-  ---------------------------------
-  default-extensions: Strict
-
+---------------------------------
+-- https://plutus.cardano.intersectmbo.org/docs/using-plutus-tx/compiling-plutus-tx#extensions
+-- TODO: con esto activado de forma general no compila LedgerApiV2.unsafeFromBuiltinData 
+-- default-extensions: Strict
 ---------------------------------
 common common-all-deps-and-languange
   default-language:   Haskell2010
@@ -168,6 +166,9 @@ common common-deps-main-library
 
 ---------------------------------
 common common-deps-test-suites
+ if flag(verbose)
+    cpp-options: -DVERBOSE
+
   build-depends:
     , mtl
     , plutus-core
@@ -186,8 +187,6 @@ common common-deps-test-suites
 library
   import:
     common-all-deps-and-languange, common-deps-main-library, plutus-tx-config, warnings-config
-  if flag(no-use-serialize-onchain)
-    cpp-options: -DNO_USE_SERIALISE_DATA
   hs-source-dirs:  src
   exposed-modules:
     Helpers.CLI

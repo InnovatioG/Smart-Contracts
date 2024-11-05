@@ -87,6 +87,11 @@ import qualified Test.Tasty              as Tasty
 
 import qualified Helpers.OffChain                                as OffChainHelpers
 import qualified Helpers.OnChain                                 as OnChainHelpers
+import qualified PlutusTx.Code as PlutusTxCode
+import qualified UntypedPlutusCore as UPLC
+import qualified UntypedPlutusCore.Evaluation.Machine.Cek as UPLC
+import qualified PlutusCore.Evaluation.Machine.ExBudget as PLC
+import qualified Plutonomy
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -1407,5 +1412,25 @@ badCase msg = goodCase msg . PlutusSimpleModel.mustFail
 goodCase :: forall a. P.String -> PlutusSimpleModel.Run a -> Tasty.TestTree
 goodCase = PlutusSimpleModel.testNoErrorsTrace  (PlutusSimpleModel.adaValue 1_000_000_000) PlutusSimpleModel.defaultBabbage
 
+
+--------------------------------------------------------------------------------
+
+plcProgramTerm :: PlutusTxCode.CompiledCode a -> UPLC.Term UPLC.NamedDeBruijn UPLC.DefaultUni  UPLC.DefaultFun ()
+plcProgramTerm = UPLC._progTerm . PlutusTxCode.getPlc
+
+evaluateCompileCodeWithCek :: PlutusTxCode.CompiledCode a -> UPLC.EvaluationResult (UPLC.Term UPLC.NamedDeBruijn UPLC.DefaultUni UPLC.DefaultFun ())
+evaluateCompileCodeWithCek = UPLC.unsafeExtractEvaluationResult . (\(fstT,_,_) -> fstT) . UPLC.runCekDeBruijn PLC.defaultCekParameters UPLC.restrictingEnormous UPLC.logEmitter . plcProgramTerm
+
+evaluateCompileCodeWithCekGetCost :: PlutusTxCode.CompiledCode a -> (PLC.ExBudget, [DataText.Text])
+evaluateCompileCodeWithCekGetCost code  =
+    let (result, UPLC.TallyingSt _ budget, logOut) = UPLC.runCekDeBruijn PLC.defaultCekParameters UPLC.tallying UPLC.logEmitter  (plcProgramTerm code)
+    in case result of
+            Right _ -> (budget, logOut)
+            Left _  -> (budget, logOut)
+
+--------------------------------------------------------------------------------
+
+testCode :: UPLC.Program UPLC.NamedDeBruijn UPLC.DefaultUni UPLC.DefaultFun ()
+testCode = PlutusTxCode.getPlc $ Plutonomy.optimizeUPLC $$(PlutusTx.compile [|| traceIfFalse "d"  False ||])
 
 --------------------------------------------------------------------------------

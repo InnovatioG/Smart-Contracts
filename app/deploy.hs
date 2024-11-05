@@ -1,11 +1,8 @@
 module Main where
 
-import           Control.Exception  (throwIO)
-import           Data.List
-import qualified Deploy             
+import qualified Deploy
 import qualified Prelude            as P
 import           System.Environment (getArgs)
-import qualified Types              as T
 
 --Modulo:
 

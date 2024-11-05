@@ -8,14 +8,16 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 --------------------------------------------------------------------------------2
+-- UNCOMMENT THIS CODE TO CREATE A PROFILE LOGS WITHIN THE SCRIPT
 -- {-# OPTIONS_GHC -g #-}
 -- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:profile-all #-}
 -- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:conservative-optimisation #-}
+-- THIS ADD TO LOGS BUT CANT BE PARSED BY traceToStacks
 -- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:coverage-all #-}
 -- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:coverage-boolean #-}
 -- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:coverage-location #-}
 -- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:no-optimize #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:verbosity=1 #-}
+-- {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:verbosity=1 #-}
 --------------------------------------------------------------------------------2
 {- HLINT ignore "Use camelCase"          -}
 {- HLINT ignore "Reduce duplication"          -}
@@ -27,26 +29,24 @@ module Protocol.OnChain where
 -- Import Externos
 --------------------------------------------------------------------------------2
 
-import qualified Ledger.Ada                as LedgerAda
-import qualified Ledger.Value              as LedgerValue
+import qualified Ledger.Ada                 as LedgerAda
+import qualified Ledger.Value               as LedgerValue
 import qualified Plutonomy
-import qualified Plutus.V2.Ledger.Api      as LedgerApiV2
-import qualified Plutus.V2.Ledger.Contexts as LedgerContextsV2
+import qualified Plutus.V2.Ledger.Api       as LedgerApiV2
+import qualified Plutus.V2.Ledger.Contexts  as LedgerContextsV2
 import qualified PlutusTx
-import           PlutusTx.Prelude
 import qualified PlutusTx.Builtins.Internal as BI
+import           PlutusTx.Prelude
 
 --------------------------------------------------------------------------------2
 -- Import Internos
 --------------------------------------------------------------------------------2
 
-import qualified Constants                 as T
-import qualified Helpers.Constants         as T
-import qualified Helpers.OnChain           as OnChainHelpers
-import qualified Protocol.Helpers          as ProtocolHelpers
-import qualified Protocol.Types            as T
-import qualified Types            as T
-
+import qualified Constants                  as T
+import qualified Helpers.OnChain            as OnChainHelpers
+import qualified Protocol.Helpers           as ProtocolHelpers
+import qualified Protocol.Types             as T
+import qualified Types                      as T
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -96,7 +96,7 @@ mkPolicyID (T.PolicyParams !protocolPolicyID_TxOutRef) _ !ctxRaw =
                     (head outputs_txOuts)
                     protocolID_AC
                     Nothing
-                    T.getProtocolDatumType
+                    T.getProtocol_DatumType
                 )
         ------------------
         !protocolDatum_Out = OnChainHelpers.getDatum_In_TxOut_And_Datum output_TxOut_And_ProtocolDatum
@@ -106,19 +106,19 @@ mkPolicyID (T.PolicyParams !protocolPolicyID_TxOutRef) _ !ctxRaw =
         !valueFor_ProtocolDatum_Out_Control = valueFor_Mint_ProtocolID <> value_MinADA_For_ProtocolDatum
         ---------------------
         !protocolDatum_Out_Control =
-            T.mkProtocolDatumType
+            T.mkProtocol_DatumType
                 (T.pdAdmins protocolDatum_Out)
                 (T.pdTokenAdminPolicy_CS protocolDatum_Out)
                 minADA_For_ProtocolDatum
         ---------------------
-        isCorrect_Output_ProtocolDatum :: Bool
-        !isCorrect_Output_ProtocolDatum =
+        isCorrect_Output_Protocol_Datum :: Bool
+        !isCorrect_Output_Protocol_Datum =
             protocolDatum_Out
 
                 `OnChainHelpers.isUnsafeEqDatums` protocolDatum_Out_Control
                 ------------------
-        isCorrect_Output_ProtocolDatum_Value :: Bool
-        !isCorrect_Output_ProtocolDatum_Value =
+        isCorrect_Output_Protocol_Datum_Value :: Bool
+        !isCorrect_Output_Protocol_Datum_Value =
             let
                 !valueOf_ProtocolDatum_Out = OnChainHelpers.getValue_In_TxOut_And_Datum output_TxOut_And_ProtocolDatum
             in
@@ -132,25 +132,23 @@ mkPolicyID (T.PolicyParams !protocolPolicyID_TxOutRef) _ !ctxRaw =
             -----------------
             traceIfFalse "not isTxOutAnInput" (OnChainHelpers.isTxOutAnInput protocolPolicyID_TxOutRef info)
                 && traceIfFalse "not isMintingID" isMintingID
-                && traceIfFalse "not isCorrect_Output_ProtocolDatum" isCorrect_Output_ProtocolDatum
-                && traceIfFalse "not isCorrect_Output_ProtocolDatum_Value" isCorrect_Output_ProtocolDatum_Value
+                && traceIfFalse "not isCorrect_Output_Protocol_Datum" isCorrect_Output_Protocol_Datum
+                && traceIfFalse "not isCorrect_Output_Protocol_Datum_Value" isCorrect_Output_Protocol_Datum_Value
 
 --------------------------------------------------------------------------------2
-
-{-# INLINEABLE dataToListData #-}
-dataToListData :: BuiltinData -> BI.BuiltinList BuiltinData
-dataToListData bd = BI.snd (BI.unsafeDataAsConstr bd)
-
-{-# INLINABLE parseData #-}
-parseData ::PlutusTx.FromData a =>  BuiltinData -> BuiltinString -> a
-parseData d s = case PlutusTx.fromBuiltinData  d of
-  Just d_ -> d_
-  _      -> traceError s
 
 {-# INLINEABLE mkValidator #-}
 mkValidator :: T.ValidatorParams -> BuiltinData -> BuiltinData -> BuiltinData -> ()
 mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_CS) !datumRaw !redRaw !ctxRaw =
     let
+        ------------------
+        parseData ::PlutusTx.FromData a =>  BuiltinData -> BuiltinString -> a
+        parseData d s = case PlutusTx.fromBuiltinData  d of
+            Just d_ -> d_
+            _       -> traceError s
+        ------------------
+        dataToListData :: BuiltinData -> BI.BuiltinList BuiltinData
+        dataToListData bd = BI.snd (BI.unsafeDataAsConstr bd)
         ------------------
         ctxListRaw :: BI.BuiltinList BuiltinData
         !ctxListRaw = dataToListData ctxRaw
@@ -162,8 +160,8 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
         !txInfoInputsRaw = BI.head infoListRaw
         txInfoReferenceInputsPlusTail :: BI.BuiltinList BuiltinData
         !txInfoReferenceInputsPlusTail = BI.tail infoListRaw
-        txInfoReferenceInputsRaw :: BuiltinData
-        !txInfoReferenceInputsRaw = BI.head txInfoReferenceInputsPlusTail
+        -- txInfoReferenceInputsRaw :: BuiltinData
+        -- !txInfoReferenceInputsRaw = BI.head txInfoReferenceInputsPlusTail
         txInfoOutputsPlusTail :: BI.BuiltinList BuiltinData
         !txInfoOutputsPlusTail = BI.tail txInfoReferenceInputsPlusTail
         txInfoOutputsRaw :: BuiltinData
@@ -171,8 +169,8 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
         -- Skipping txInfoFee
         txInfoMintPlusTail :: BI.BuiltinList BuiltinData
         !txInfoMintPlusTail = BI.tail (BI.tail txInfoOutputsPlusTail)
-        txInfoMintRaw :: BuiltinData
-        !txInfoMintRaw = BI.head txInfoMintPlusTail
+        -- txInfoMintRaw :: BuiltinData
+        -- !txInfoMintRaw = BI.head txInfoMintPlusTail
         -- Skipping txInfoDCert and txInfoWdrl
         txInfoValidRangePlusTail :: BI.BuiltinList BuiltinData
         !txInfoValidRangePlusTail = BI.tail (BI.tail (BI.tail txInfoMintPlusTail))
@@ -184,14 +182,14 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
         !txInfoSignatoriesRaw = BI.head txInfoSignatoriesPlusTail
         ------------------
         !txInfoInputs = parseData @[LedgerContextsV2.TxInInfo] txInfoInputsRaw "txInfoInputs: Invalid type"
-        !txInfoReferenceInputs = parseData @[LedgerContextsV2.TxInInfo] txInfoReferenceInputsRaw "txInfoReferenceInputs: Invalid type"
+        -- !txInfoReferenceInputs = parseData @[LedgerContextsV2.TxInInfo] txInfoReferenceInputsRaw "txInfoReferenceInputs: Invalid type"
         !txInfoOutputs = parseData @[LedgerApiV2.TxOut] txInfoOutputsRaw "txInfoOutputs: Invalid type"
-        !txInfoMint = parseData @LedgerApiV2.Value txInfoMintRaw "txInfoMint: Invalid type"
+        -- !txInfoMint = parseData @LedgerApiV2.Value txInfoMintRaw "txInfoMint: Invalid type"
         !txInfoValidRange = parseData @LedgerApiV2.POSIXTimeRange txInfoValidRangeRaw "txInfoValidRange: Invalid type"
         !txInfoSignatories = parseData @[LedgerApiV2.PubKeyHash] txInfoSignatoriesRaw "txInfoSignatories: Invalid type"
         ------------------
         scriptContextPurposeRaw :: BuiltinData
-        !scriptContextPurposeRaw = BI.head $ BI.tail ctxListRaw 
+        !scriptContextPurposeRaw = BI.head $ BI.tail ctxListRaw
         ------------------
         scriptContextPurpose = parseData @LedgerContextsV2.ScriptPurpose scriptContextPurposeRaw "scriptContextPurpose: Invalid type"
         ------------------
@@ -261,10 +259,10 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                                 (head outputs_txOuts)
                                 protocolID_AC
                                 (Just protocol_Validator_Address)
-                                T.getProtocolDatumType
+                                T.getProtocol_DatumType
                             )
                     ------------------
-                    !protocolDatum_In = T.getProtocolDatumType datum
+                    !protocolDatum_In = T.getProtocol_DatumType datum
                     ------------------
                     !valueOf_ProtocolDatum_In = LedgerApiV2.txOutValue input_TxOut_BeingValidated
                     ------------------
@@ -294,25 +292,25 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                                 -- Que el ProtocolDatum se actualiza correctamente
                                 -- Que el ProtocolDatum value no cambie
                                 ------------------
-                                traceIfFalse "not isCorrect_Output_ProtocolDatum_Updated" isCorrect_Output_ProtocolDatum_Updated
-                                    && traceIfFalse "not isCorrect_Output_ProtocolDatum_Value_NotChanged" isCorrect_Output_ProtocolDatum_Value_NotChanged
+                                traceIfFalse "not isCorrect_Output_Protocol_Datum_Updated" isCorrect_Output_Protocol_Datum_Updated
+                                    && traceIfFalse "not isCorrect_Output_Protocol_Datum_Value_NotChanged" isCorrect_Output_Protocol_Datum_Value_NotChanged
                                 where
                                     ---------------------
                                     !protocolDatum_Out = OnChainHelpers.getDatum_In_TxOut_And_Datum output_Own_TxOut_And_ProtocolDatum
                                     ---------------------
                                     !protocolDatum_Out_Control =
-                                        ProtocolHelpers.mkUpdated_ProtocolDatum_With_NormalChanges
+                                        ProtocolHelpers.mkUpdated_Protocol_Datum_With_NormalChanges
                                             protocolDatum_In
                                             (T.pdAdmins protocolDatum_Out)
                                             (T.pdTokenAdminPolicy_CS protocolDatum_Out)
                                     ---------------------
-                                    isCorrect_Output_ProtocolDatum_Updated :: Bool
-                                    !isCorrect_Output_ProtocolDatum_Updated =
+                                    isCorrect_Output_Protocol_Datum_Updated :: Bool
+                                    !isCorrect_Output_Protocol_Datum_Updated =
                                         protocolDatum_Out
                                             `OnChainHelpers.isUnsafeEqDatums` protocolDatum_Out_Control
                                             ------------------
-                                    isCorrect_Output_ProtocolDatum_Value_NotChanged :: Bool
-                                    !isCorrect_Output_ProtocolDatum_Value_NotChanged =
+                                    isCorrect_Output_Protocol_Datum_Value_NotChanged :: Bool
+                                    !isCorrect_Output_Protocol_Datum_Value_NotChanged =
                                         let
                                             !valueOf_ProtocolDatum_Out = OnChainHelpers.getValue_In_TxOut_And_Datum output_Own_TxOut_And_ProtocolDatum
                                             !valueFor_ProtocolDatum_Control = valueOf_ProtocolDatum_In
@@ -324,26 +322,27 @@ mkValidator (T.ValidatorParams !protocolPolicyID_CS !tokenEmergencyAdminPolicy_C
                                 -- Que el ProtocolDatum se actualiza correctamente
                                 -- Que el ProtocolDatum value cambie con el min ADA nuevo
                                 ------------------
-                                traceIfFalse "not isCorrect_Output_ProtocolDatum_UpdatedMinADA" isCorrect_Output_ProtocolDatum_UpdatedMinADA
-                                    && traceIfFalse "not isCorrect_Output_ProtocolDatum_Value_ChangedADA" isCorrect_Output_ProtocolDatum_Value_ChangedADA
+                                    traceIfFalse "not min ADA > 0" (newMinADA > 0)
+                                    && traceIfFalse "not isCorrect_Output_Protocol_Datum_UpdatedMinADA" isCorrect_Output_Protocol_Datum_UpdatedMinADA
+                                    && traceIfFalse "not isCorrect_Output_Protocol_Datum_Value_ChangedADA" isCorrect_Output_Protocol_Datum_Value_ChangedADA
                                 where
                                     ------------------
                                     !protocolDatum_Out = OnChainHelpers.getDatum_In_TxOut_And_Datum output_Own_TxOut_And_ProtocolDatum
                                     ------------------
                                     !newMinADA = T.pdMinADA protocolDatum_Out
                                     ------------------
-                                    isCorrect_Output_ProtocolDatum_UpdatedMinADA :: Bool
-                                    !isCorrect_Output_ProtocolDatum_UpdatedMinADA =
+                                    isCorrect_Output_Protocol_Datum_UpdatedMinADA :: Bool
+                                    !isCorrect_Output_Protocol_Datum_UpdatedMinADA =
                                         let
                                             !protocolDatum_Out_Control =
-                                                ProtocolHelpers.mkUpdated_ProtocolDatum_With_NewMinADA
+                                                ProtocolHelpers.mkUpdated_Protocol_Datum_With_MinADAChanged
                                                     protocolDatum_In
                                                     newMinADA
                                         in
                                             protocolDatum_Out `OnChainHelpers.isUnsafeEqDatums` protocolDatum_Out_Control
                                     ------------------
-                                    isCorrect_Output_ProtocolDatum_Value_ChangedADA :: Bool
-                                    !isCorrect_Output_ProtocolDatum_Value_ChangedADA =
+                                    isCorrect_Output_Protocol_Datum_Value_ChangedADA :: Bool
+                                    !isCorrect_Output_Protocol_Datum_Value_ChangedADA =
                                         let
                                             !valueOf_ProtocolDatum_Out = OnChainHelpers.getValue_In_TxOut_And_Datum output_Own_TxOut_And_ProtocolDatum
                                             !valueFor_ProtocolDatum_Control = valueOf_ProtocolDatum_In <> LedgerAda.lovelaceValueOf (newMinADA - T.pdMinADA protocolDatum_In)

@@ -1,13 +1,13 @@
 {-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DerivingStrategies    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveGeneric      #-}
 
 --------------------------------------------------------------------------------2
 {- HLINT ignore "Use camelCase"          -}
@@ -19,44 +19,36 @@ module Deploy where
 --------------------------------------------------------------------------------2
 -- External Imports
 --------------------------------------------------------------------------------2
-import qualified Control.Monad.IO.Class        as MonadIOClass (MonadIO (..))
-import qualified Data.Time                     as DataTime (defaultTimeLocale, formatTime, getCurrentTime)
-import qualified Ledger
+import qualified Control.Monad.IO.Class  as MonadIOClass (MonadIO (..))
+import qualified Data.Aeson              as DataAeson (FromJSON, ToJSON)
+import qualified Data.OpenApi.Schema     as DataOpenApiSchema (ToSchema)
+import qualified Data.Time               as DataTime (defaultTimeLocale, formatTime, getCurrentTime)
+import qualified GHC.Generics            as GHCGenerics (Generic)
 import qualified Plutonomy
-import qualified Plutus.V2.Ledger.Api          as LedgerApiV2
+import qualified Plutus.V2.Ledger.Api    as LedgerApiV2
 import qualified PlutusTx
-import           PlutusTx.Prelude              hiding (unless)
-import qualified Prelude                       as P
-import qualified System.Directory              as SystemDirectory
-import qualified System.FilePath               as SystemFilePath
-import qualified System.FilePath.Posix         as SystemFilePathPosix
-import qualified Data.String                   as DataString
-import qualified Ledger.Value                  as LedgerValue
-import qualified PlutusTx.Builtins.Class       as TxBuiltinsClass
-import qualified Data.Aeson                  as DataAeson (FromJSON, ToJSON)
-import qualified Data.OpenApi.Schema         as DataOpenApiSchema (ToSchema)
-import qualified GHC.Generics                as GHCGenerics (Generic)
+import qualified PlutusTx.Builtins.Class as TxBuiltinsClass
+import           PlutusTx.Prelude        hiding (unless)
+import qualified Prelude                 as P
 import qualified Schema
+import qualified System.Directory        as SystemDirectory
+import qualified System.FilePath.Posix   as SystemFilePathPosix
 --------------------------------------------------------------------------------2
 -- Internal Imports
 --------------------------------------------------------------------------------2
 
-import qualified Helpers.CLI            as CLIHelpers
-import qualified Helpers.Deploy         as DeployHelpers
-import qualified Helpers.OffChain       as OffChainHelpers
-
--- import qualified Helpers.Types                 as T
-import qualified Constants            as T
-
-import qualified Campaign.Funds.OnChain as CampaignFundsOnChain
-import qualified Campaign.Funds.Types   as CampaignFundsT
-import qualified Campaign.OnChain         as CampaignOnChain
-import qualified Campaign.Types           as CampaignT
-import qualified Protocol.OnChain     as ProtocolOnChain
-import qualified Protocol.Types       as ProtocolT
-import qualified Script.OnChain       as ScriptOnChain
-import qualified Script.Types         as ScriptT
-
+import qualified Campaign.Funds.OnChain  as CampaignFundsOnChain
+import qualified Campaign.Funds.Types    as CampaignFundsT
+import qualified Campaign.OnChain        as CampaignOnChain
+import qualified Campaign.Types          as CampaignT
+import qualified Constants               as T
+import qualified Helpers.CLI             as CLIHelpers
+import qualified Helpers.Deploy          as DeployHelpers
+import qualified Helpers.OffChain        as OffChainHelpers
+import qualified Protocol.OnChain        as ProtocolOnChain
+import qualified Protocol.Types          as ProtocolT
+import qualified Script.OnChain          as ScriptOnChain
+import qualified Script.Types            as ScriptT
 
 --------------------------------------------------------------------------------2
 -- Types
@@ -64,29 +56,29 @@ import qualified Script.Types         as ScriptT
 
 data ProtocolDeployParams
     = ProtocolDeployParams
-          { pdpProtocolVersion             :: Integer
-          , pdpTokenEmergencyAdmin_CS             :: LedgerApiV2.CurrencySymbol
-          , pdpProtocolPolicyID_Params            :: ProtocolT.PolicyParams
-          , pdpProtocolPolicyID_CborHex           :: P.String
-          , pdpProtocolPolicyID_CS                :: LedgerApiV2.CurrencySymbol
-          , pdpProtocolValidator_Params           :: ProtocolT.ValidatorParams
-          , pdpProtocolValidator_Hash             :: LedgerApiV2.ValidatorHash
-          , pdpProtocolValidator_CborHex          :: P.String
-          , pdpProtocolValidator_AddressTestnet   :: P.String
-          , pdpProtocolValidator_AddressMainnet   :: P.String
-          , pdpScriptPolicyID_Params              :: ScriptT.PolicyParams
-          , pdpScriptPolicyID_CborHex             :: P.String
-          , pdpScriptPolicyID_CS                  :: LedgerApiV2.CurrencySymbol
-          , pdpScriptValidator_Params             :: ScriptT.ValidatorParams
-          , pdpScriptValidator_Hash               :: LedgerApiV2.ValidatorHash
-          , pdpScriptValidator_CborHex            :: P.String
-          , pdpScriptValidator_AddressTestnet     :: P.String
-          , pdpScriptValidator_AddressMainnet     :: P.String
-          , pdpCampaignValidator_Params         :: CampaignT.ValidatorParams
-          , pdpCampaignValidator_Hash           :: LedgerApiV2.ValidatorHash
-          , pdpCampaignValidator_CborHex        :: P.String
-          , pdpCampaignValidator_AddressTestnet :: P.String
-          , pdpCampaignValidator_AddressMainnet :: P.String
+          { pdpProtocolVersion                       :: Integer
+          , pdpTokenEmergencyAdmin_CS                :: LedgerApiV2.CurrencySymbol
+          , pdpProtocolPolicyID_Params               :: ProtocolT.PolicyParams
+          , pdpProtocolPolicyID_CborHex              :: P.String
+          , pdpProtocolPolicyID_CS                   :: LedgerApiV2.CurrencySymbol
+          , pdpProtocolValidator_Params              :: ProtocolT.ValidatorParams
+          , pdpProtocolValidator_Hash                :: LedgerApiV2.ValidatorHash
+          , pdpProtocolValidator_CborHex             :: P.String
+          , pdpProtocolValidator_AddressTestnet      :: P.String
+          , pdpProtocolValidator_AddressMainnet      :: P.String
+          , pdpScriptPolicyID_Params                 :: ScriptT.PolicyParams
+          , pdpScriptPolicyID_CborHex                :: P.String
+          , pdpScriptPolicyID_CS                     :: LedgerApiV2.CurrencySymbol
+          , pdpScriptValidator_Params                :: ScriptT.ValidatorParams
+          , pdpScriptValidator_Hash                  :: LedgerApiV2.ValidatorHash
+          , pdpScriptValidator_CborHex               :: P.String
+          , pdpScriptValidator_AddressTestnet        :: P.String
+          , pdpScriptValidator_AddressMainnet        :: P.String
+          , pdpCampaignValidator_Params              :: CampaignT.ValidatorParams
+          , pdpCampaignValidator_Hash                :: LedgerApiV2.ValidatorHash
+          , pdpCampaignValidator_CborHex             :: P.String
+          , pdpCampaignValidator_AddressTestnet      :: P.String
+          , pdpCampaignValidator_AddressMainnet      :: P.String
           , pdpCampaignFundsValidator_Params         :: CampaignFundsT.ValidatorParams
           , pdpCampaignFundsValidator_Hash           :: LedgerApiV2.ValidatorHash
           , pdpCampaignFundsValidator_CborHex        :: P.String
@@ -97,23 +89,23 @@ data ProtocolDeployParams
 
 data CampaignFactoryDeployParams
     = CampaignFactoryDeployParams
-          { ffdpCampaignVersion             :: Integer,
-            ffdpCampaignPolicy_Pre_CborHex           :: P.String
-          , ffdpCampaignFundsPolicyID_Pre_CborHex  :: P.String
+          { ffdpCampaignVersion                   :: Integer
+          , ffdpCampaignPolicy_Pre_CborHex        :: P.String
+          , ffdpCampaignFundsPolicyID_Pre_CborHex :: P.String
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, DataOpenApiSchema.ToSchema, GHCGenerics.Generic, P.Eq, P.Ord, P.Show, Schema.ToSchema)
 
 
 data ProtocolAndCampaignFactoryDeployParams
     = ProtocolAndCampaignFactoryDeployParams
-          { dapProtocolVersion           :: Integer
-          , dapCampaignVersion               :: Integer
-          , dapProtocolPolicyID_Pre_CborHex     :: P.String
-          , dapProtocolValidator_Pre_CborHex    :: P.String
-          , dapScriptPolicyID_Pre_CborHex       :: P.String
-          , dapScriptValidator_Pre_CborHex      :: P.String
-          , dapCampaignPolicy_Pre_CborHex           :: P.String
-          , dapCampaignValidator_Pre_CborHex        :: P.String
+          { dapProtocolVersion                    :: Integer
+          , dapCampaignVersion                    :: Integer
+          , dapProtocolPolicyID_Pre_CborHex       :: P.String
+          , dapProtocolValidator_Pre_CborHex      :: P.String
+          , dapScriptPolicyID_Pre_CborHex         :: P.String
+          , dapScriptValidator_Pre_CborHex        :: P.String
+          , dapCampaignPolicy_Pre_CborHex         :: P.String
+          , dapCampaignValidator_Pre_CborHex      :: P.String
           , dapCampaignFundsPolicyID_Pre_CborHex  :: P.String
           , dapCampaignFundsValidator_Pre_CborHex :: P.String
           }
@@ -142,7 +134,7 @@ deploy_Protocol_And_CampaignFactory_With_StringParams protocolPolicyID_TxOutRefS
         !protocolPolicyID_TxOutRef = OffChainHelpers.unsafeReadTxOutRef protocolPolicyID_TxOutRefStr
         !tokenEmergencyAdminPolicy_CS = LedgerApiV2.CurrencySymbol $ TxBuiltinsClass.toBuiltin  $ OffChainHelpers.stringFromHexString tokenEmergencyAdminPolicy_CS_Str
     ------------------------------
-    deploy_Protocol path protocolName protocolPolicyID_TxOutRef tokenEmergencyAdminPolicy_CS 
+    deploy_Protocol path protocolName protocolPolicyID_TxOutRef tokenEmergencyAdminPolicy_CS
     -- deploy_CampaignFactory (path SystemFilePathPosix.</> protocolName) "campaign-factory"
 
 -- Para obtener deploy files de un protocolo especifico
@@ -222,7 +214,7 @@ deploy_Protocol path protocolName protocolPolicyID_TxOutRef tokenEmergencyAdminP
     _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorHash (path SystemFilePathPosix.</> protocolName) "CampaignValidator" campaignValidator_Hash
     _ <- MonadIOClass.liftIO $ DeployHelpers.deployValidatorAddress (path SystemFilePathPosix.</> protocolName) "CampaignValidator" campaignValidator_Address
     ------------------------------
-    MonadIOClass.liftIO $ P.putStrLn "Generating 'Campaign Funds Validator' Script..."
+    MonadIOClass.liftIO $ P.putStrLn "Generating 'CampaignFunds Validator ' Script..."
     let campaignFundsValidatorParams =
             CampaignFundsT.ValidatorParams
                 {
@@ -285,7 +277,7 @@ deploy_Protocol path protocolName protocolPolicyID_TxOutRef tokenEmergencyAdminP
                 pdpCampaignFundsValidator_Hash            = campaignFundsValidator_Hash,
                 pdpCampaignFundsValidator_CborHex         = OffChainHelpers.lazyByteStringToString campaignFundsValidator_CborHex,
                 pdpCampaignFundsValidator_AddressTestnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Testnet,
-                pdpCampaignFundsValidator_AddressMainnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Mainnet 
+                pdpCampaignFundsValidator_AddressMainnet  = OffChainHelpers.lazyByteStringToString campaignFundsValidator_Address_Mainnet
             }
     OffChainHelpers.writeEncodedToFile (path SystemFilePathPosix.</> protocolName SystemFilePathPosix.</> "ProtocolDeploy.json") protocolDeployParams
     ------------------------------
@@ -308,7 +300,7 @@ deploy_CampaignFactory path campaignFactoryName =
         DeployHelpers.writeCompiledCodeToJsonFile (path SystemFilePathPosix.</> campaignFactoryName SystemFilePathPosix.</> "CampaignPolicy_PRE.plutus") campaignPolicy
         -- DeployHelpers.writeCompiledCodeToBinaryFile (path SystemFilePathPosix.</> campaignFactoryName SystemFilePathPosix.</> "CampaignPolicy_PRE.serialized") campaignPolicy
         ------------------------------
-        MonadIOClass.liftIO $ P.putStrLn "Generating 'Campaign Funds PolicyID' Pre-Script..."
+        MonadIOClass.liftIO $ P.putStrLn "Generating 'CampaignFunds PolicyID' Pre-Script..."
         let campaignFundsPolicyID =  Plutonomy.optimizeUPLC  CampaignFundsOnChain.policyIDCode
         DeployHelpers.writeCompiledCodeToJsonFile (path SystemFilePathPosix.</> campaignFactoryName SystemFilePathPosix.</> "CampaignFundsPolicyID_PRE.plutus") campaignFundsPolicyID
         -- DeployHelpers.writeCompiledCodeToBinaryFile (path SystemFilePathPosix.</> campaignFactoryName SystemFilePathPosix.</> "CampaignFundsPolicyID_PRE.serialized") campaignFundsPolicyID
@@ -345,7 +337,7 @@ deploy_PRE_script filePath name swOverWrite code = do
             let optimizedCode = code
             -- DeployHelpers.writeCompiledCodeToBinaryFile filePath optimizedCode
             DeployHelpers.writeCompiledCodeToJsonFile filePath optimizedCode
-            
+
 ------------------------------------------------------------------------------2
 
 deploy_ProtocolFactory_And_CampaingFactory ::  P.FilePath -> P.String -> Bool -> P.IO ProtocolAndCampaignFactoryDeployParams
@@ -373,10 +365,10 @@ deploy_ProtocolFactory_And_CampaingFactory path name swOverWrite = do
     protocolValidator_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "ProtocolValidator_PRE.plutus")
     scriptPolicyID_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "ScriptPolicyID_PRE.plutus")
     scriptValidator_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "ScriptValidator_PRE.plutus")
-    fundPolicy_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignPolicy_PRE.plutus")
-    fundValidator_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignValidator_PRE.plutus")
-    fundHoldingPolicyID_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignFundsPolicyID_PRE.plutus")
-    fundHoldingValidator_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignFundsValidator_PRE.plutus")
+    campaignPolicy_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignPolicy_PRE.plutus")
+    campaignValidator_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignValidator_PRE.plutus")
+    campaignFundsPolicyID_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignFundsPolicyID_PRE.plutus")
+    campaignFundsValidator_Pre_CborHex <- OffChainHelpers.readFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "CampaignFundsValidator_PRE.plutus")
     ------------------------------
     let deployAllPreParams =
                 ProtocolAndCampaignFactoryDeployParams {
@@ -386,10 +378,10 @@ deploy_ProtocolFactory_And_CampaingFactory path name swOverWrite = do
                     dapProtocolValidator_Pre_CborHex   = OffChainHelpers.lazyByteStringToString protocolValidator_Pre_CborHex,
                     dapScriptPolicyID_Pre_CborHex      = OffChainHelpers.lazyByteStringToString scriptPolicyID_Pre_CborHex,
                     dapScriptValidator_Pre_CborHex     = OffChainHelpers.lazyByteStringToString scriptValidator_Pre_CborHex,
-                    dapCampaignPolicy_Pre_CborHex           = OffChainHelpers.lazyByteStringToString  fundPolicy_Pre_CborHex,
-                    dapCampaignValidator_Pre_CborHex = OffChainHelpers.lazyByteStringToString  fundValidator_Pre_CborHex,
-                    dapCampaignFundsPolicyID_Pre_CborHex    = OffChainHelpers.lazyByteStringToString  fundHoldingPolicyID_Pre_CborHex,
-                    dapCampaignFundsValidator_Pre_CborHex   = OffChainHelpers.lazyByteStringToString  fundHoldingValidator_Pre_CborHex
+                    dapCampaignPolicy_Pre_CborHex           = OffChainHelpers.lazyByteStringToString  campaignPolicy_Pre_CborHex,
+                    dapCampaignValidator_Pre_CborHex = OffChainHelpers.lazyByteStringToString  campaignValidator_Pre_CborHex,
+                    dapCampaignFundsPolicyID_Pre_CborHex    = OffChainHelpers.lazyByteStringToString  campaignFundsPolicyID_Pre_CborHex,
+                    dapCampaignFundsValidator_Pre_CborHex   = OffChainHelpers.lazyByteStringToString  campaignFundsValidator_Pre_CborHex
                 }
     ------------------------------
     OffChainHelpers.writeEncodedToFile (path SystemFilePathPosix.</> name SystemFilePathPosix.</> "deploy.json") deployAllPreParams
@@ -400,7 +392,7 @@ deploy_ProtocolFactory_And_CampaingFactory path name swOverWrite = do
     return deployAllPreParams
 
 ------------------------------------------------------------------------------2
-    
+
 loadFactoryDeployParams :: SystemFilePathPosix.FilePath -> Bool -> P.IO (Maybe ProtocolAndCampaignFactoryDeployParams)
 loadFactoryDeployParams filePath swOverWrite = do
     fileExists <- SystemDirectory.doesFileExist filePath
@@ -410,3 +402,5 @@ loadFactoryDeployParams filePath swOverWrite = do
         else do
             deployParams <- deploy_ProtocolFactory_And_CampaingFactory "export" "test" False
             return $ Just deployParams
+
+------------------------------------------------------------------------------2

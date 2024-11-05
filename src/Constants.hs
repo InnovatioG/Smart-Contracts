@@ -11,15 +11,14 @@ module Constants where
 -- Import Externos
 --------------------------------------------------------------------------------2
 
-import qualified Data.ByteString         as DataByteString
-import qualified Plutus.V2.Ledger.Api    as LedgerApiV2
+import qualified Plutus.V2.Ledger.Api as LedgerApiV2
 import           PlutusTx.Prelude
 
 --------------------------------------------------------------------------------2
 -- Import Internos
 --------------------------------------------------------------------------------2
 
-import qualified Helpers.Types           as T
+import qualified Helpers.Types        as T
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -31,7 +30,7 @@ validTxTimeRange = 900_000 -- 15 * 60 * 1000 = 15 minutos
 --------------------------------------------------------------------------------2
 
 protocolID_TN :: T.TN
-protocolID_TN = LedgerApiV2.TokenName "ProtocolID" 
+protocolID_TN = LedgerApiV2.TokenName "ProtocolID"
 
 tokenEmergencyAdmin_TN :: T.TN
 tokenEmergencyAdmin_TN = LedgerApiV2.TokenName "EmergencyAdmin"
@@ -40,10 +39,10 @@ tokenAdmin_TN :: T.TN
 tokenAdmin_TN = LedgerApiV2.TokenName "Admin"
 
 campaignID_TN :: T.TN
-campaignID_TN = LedgerApiV2.TokenName "CampaignID" 
+campaignID_TN = LedgerApiV2.TokenName "CampaignID"
 
 campaignFundsID_TN_basename :: BuiltinByteString
-campaignFundsID_TN_basename = "CampaignFundsID" 
+campaignFundsID_TN_basename = "CampaignFundsID"
 
 --------------------------------------------------------------------------------2
 

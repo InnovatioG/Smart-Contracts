@@ -34,7 +34,7 @@ import qualified Schema
 --------------------------------------------------------------------------------2
 
 import qualified Helpers.Types        as T
-import qualified Types       as T
+import qualified Types                as T
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -171,18 +171,32 @@ PlutusTx.makeIsDataIndexed
     ]
 
 --------------------------------------------------------------------------------2
+
+getPolicyRedeemerName :: Maybe PolicyRedeemer -> Maybe P.String
+getPolicyRedeemerName (Just (PolicyRedeemerMintID PolicyRedeemerMintIDType)) = Just "MintID"
+getPolicyRedeemerName (Just (PolicyRedeemerBurnID PolicyRedeemerBurnIDType)) = Just "BurnID"
+getPolicyRedeemerName _                                                      = Nothing
+
+
+--------------------------------------------------------------------------------2
 -- ValidatorRedeemer
 --------------------------------------------------------------------------------2
 
-data ValidatorRedeemerScriptDelete = ValidatorRedeemerScriptDelete deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
+data ValidatorRedeemerDelete = ValidatorRedeemerDelete deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
-instance Eq ValidatorRedeemerScriptDelete where
+instance Eq ValidatorRedeemerDelete where
     {-# INLINEABLE (==) #-}
     r1 == r2 = r1 == r2
 
-PlutusTx.makeIsDataIndexed ''ValidatorRedeemerScriptDelete [('ValidatorRedeemerScriptDelete, 0)]
+PlutusTx.makeIsDataIndexed ''ValidatorRedeemerDelete [('ValidatorRedeemerDelete, 0)]
 
-type ValidatorRedeemer = ValidatorRedeemerScriptDelete
+type ValidatorRedeemer = ValidatorRedeemerDelete
+
+------------------------------------------------------------------------------
+
+getValidatorRedeemerName :: Maybe ValidatorRedeemer -> Maybe P.String
+getValidatorRedeemerName (Just ValidatorRedeemerDelete) = Just "Delete"
+getValidatorRedeemerName _                              = Nothing
 
 ------------------------------------------------------------------------------
 
@@ -204,6 +218,6 @@ mkScriptDeleteRedeemer :: LedgerApiV2.Redeemer
 mkScriptDeleteRedeemer =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData
-            ValidatorRedeemerScriptDelete
+            ValidatorRedeemerDelete
 
 --------------------------------------------------------------------------------2

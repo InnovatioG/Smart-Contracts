@@ -23,7 +23,6 @@ module Protocol.Types where
 import qualified Data.Aeson           as DataAeson (FromJSON, ToJSON)
 import qualified Data.OpenApi.Schema  as DataOpenApiSchema (ToSchema)
 import qualified GHC.Generics         as GHCGenerics (Generic)
-import qualified Ledger.Address       as LedgerAddress
 import qualified Plutus.V2.Ledger.Api as LedgerApiV2
 import qualified PlutusTx
 import           PlutusTx.Prelude
@@ -34,9 +33,10 @@ import qualified Schema
 -- Import Internos
 --------------------------------------------------------------------------------2
 
+import qualified Constants            as T
 import qualified Helpers.Types        as T
-import qualified Constants   as T
-import qualified Types       as T
+import qualified Types                as T
+import qualified Helpers.OnChain as OnChainHelpers
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -117,12 +117,13 @@ mkMinMaxDef min' max' def' =
     MinMaxDef {mmdMin = min', mmdMax = max', mmdDef = def'}
 
 --------------------------------------------------------------------------------2
+
 data ProtocolDatumType
     = ProtocolDatumType
-          { pdProtocolVersion          :: Integer
-          , pdAdmins                          :: [T.WalletPaymentPKH]
-          , pdTokenAdminPolicy_CS             :: LedgerApiV2.CurrencySymbol
-          , pdMinADA                          :: Integer
+          { pdProtocolVersion     :: Integer
+          , pdAdmins              :: [T.WalletPaymentPKH]
+          , pdTokenAdminPolicy_CS :: LedgerApiV2.CurrencySymbol
+          , pdMinADA              :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Eq, P.Ord, P.Show)
 
@@ -154,10 +155,16 @@ instance Eq ValidatorDatum where
 
 PlutusTx.makeIsDataIndexed ''ValidatorDatum [('ProtocolDatum, 0)]
 
-{-# INLINABLE getProtocolDatumType #-}
-getProtocolDatumType :: ValidatorDatum -> ProtocolDatumType
-getProtocolDatumType (ProtocolDatum sdType) = sdType
+{-# INLINABLE getProtocol_DatumType #-}
+getProtocol_DatumType :: ValidatorDatum -> ProtocolDatumType
+getProtocol_DatumType (ProtocolDatum sdType) = sdType
 
+{-# INLINEABLE getProtocol_DatumType_From_UTxO #-}
+getProtocol_DatumType_From_UTxO :: LedgerApiV2.TxOut -> ProtocolDatumType
+getProtocol_DatumType_From_UTxO utxo = case OnChainHelpers.getInlineDatum_From_TxOut @ValidatorDatum utxo of
+                    Nothing     -> P.error "No Protocol Datum found"
+                    Just datum' -> getProtocol_DatumType datum'
+                    
 instance T.ShowDatum ValidatorDatum where
     showCborAsDatumType cbor =
         case LedgerApiV2.fromBuiltinData @ValidatorDatum cbor of
@@ -165,13 +172,13 @@ instance T.ShowDatum ValidatorDatum where
             Just d  -> Just $ P.show d
 
 --------------------------------------------------------------------------------2
-{-# INLINABLE mkProtocolDatumType #-}
-mkProtocolDatumType ::
+{-# INLINABLE mkProtocol_DatumType #-}
+mkProtocol_DatumType ::
     [T.WalletPaymentPKH]
     -> LedgerApiV2.CurrencySymbol
     -> Integer
     -> ProtocolDatumType
-mkProtocolDatumType
+mkProtocol_DatumType
     admins
     tokenAdminPolicy_CS
     minADA =
@@ -183,18 +190,18 @@ mkProtocolDatumType
                 , pdMinADA = minADA
                 }
 
-{-# INLINABLE mkProtocolDatum #-}
-mkProtocolDatum ::
+{-# INLINABLE mkProtocol_Datum #-}
+mkProtocol_Datum ::
         [T.WalletPaymentPKH]
     -> LedgerApiV2.CurrencySymbol
     -> Integer
     -> ValidatorDatum
-mkProtocolDatum
+mkProtocol_Datum
     admins
     tokenAdminPolicy_CS
     minADA =
         ProtocolDatum
-            $ mkProtocolDatumType
+            $ mkProtocol_DatumType
                     admins
                     tokenAdminPolicy_CS
                     minADA
@@ -264,6 +271,15 @@ PlutusTx.makeIsDataIndexed
         , ('ValidatorRedeemerUpdateMinADA, 1)
         , ('ValidatorRedeemerEmergency, 2)
         ]
+
+--------------------------------------------------------------------------------2
+
+
+getValidatorRedeemerName :: Maybe ValidatorRedeemer -> Maybe P.String
+getValidatorRedeemerName (Just (ValidatorRedeemerDatumUpdate ValidatorRedeemerDatumUpdateType))   = Just "DatumUpdate"
+getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType)) = Just "UpdateMinADA"
+getValidatorRedeemerName (Just (ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType))       = Just "Emergency"
+getValidatorRedeemerName _                                                                        = Nothing
 
 --------------------------------------------------------------------------------2
 

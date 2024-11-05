@@ -1,3 +1,8 @@
+--------------------------------------------------------------------------------4
+{- HLINT ignore "Use camelCase"          -}
+{- HLINT ignore "Reduce duplication"          -}
+--------------------------------------------------------------------------------4
+
 {- |
 Module      : Tests.UnitTests.Protocol.Validator
 Description : Validation logic and unit tests related to the Protocol validator.
@@ -7,271 +12,426 @@ This module defines the validation logic for the Protocol's contract.
 It includes multiple unit test cases to ensure the integrity and correctness of
 the validator script.
 -}
-module Contracts.Protocol.Validator
-    ( protocolValidatorTests
-    ) where
-
+module Contracts.Protocol.Validator where
+--------------------------------------------------------------------------------
 -- Non-IOG imports
-import           Test.QuickCheck.Instances.ByteString ()
-import qualified Test.Tasty                           as Tasty
-import qualified Test.Tasty.HUnit                     as Tasty
-
+import           Prelude                                (show)
+import           Test.QuickCheck.Instances.ByteString   ()
+import qualified Test.Tasty                             as Tasty
+import qualified Test.Tasty.HUnit                       as Tasty
 -- IOG imports
 import qualified Ledger
-import qualified Ledger.Ada                           as LedgerAda
-import qualified Ledger.Address                       as LedgerAddress
-import qualified Ledger.Interval                      as LedgerInterval
-import qualified Plutus.V2.Ledger.Api                 as LedgerApiV2
+import qualified Ledger.Ada                             as LedgerAda
+import qualified Ledger.Address                         as LedgerAddress
+import qualified Plutus.V2.Ledger.Api                   as LedgerApiV2
 import           PlutusTx.Prelude
-import qualified System.Process as SystemProcess (callCommand)
-import qualified PlutusTx
 
 -- Project imports
-import qualified Constants                            as T
-import           Contracts.Protocol.Data
-import qualified Helpers.OffChain                     as OffChainHelpers
-import qualified Helpers.OffChainEval                 as OffChainEval
-import qualified Protocol.Types                       as ProtocolT
-import qualified TestUtils.Common                     as TestUtilsCommon
-import qualified TestUtils.Constants                  as T
-import qualified TestUtils.Types                      as T
-import qualified Protocol.OnChain as ProtocolOnChain
-import qualified Prelude as P
-import qualified Helpers.Deploy as Deploy
+import qualified Helpers.OffChain                as OffChainHelpers
+import qualified Constants                     as T
+import qualified Protocol.Types                as ProtocolT
+import           TestUtils.Contracts.InitialData
+import           TestUtils.Contracts.TxContext.Protocol
+import           TestUtils.HelpersINNOVATIO
+import           TestUtils.TestContext.Asserts
+import           TestUtils.TestContext.Helpers
+import           TestUtils.Types
+import           TestUtils.TypesINNOVATIO
+import qualified TestUtils.TypesINNOVATIO as T
+--------------------------------------------------------------------------------
 
-protocolValidatorTests :: T.TestParams -> Tasty.TestTree
-protocolValidatorTests tp =
+protocol_Validator_Tests :: TestParams -> Tasty.TestTree
+protocol_Validator_Tests tp =
     Tasty.testGroup
         "Protocol Validator Tests"
-        [
-            Tasty.testGroup
-                "Testing size and resources"
-                [
-                    Tasty.testCase "Test Valid Update Tx; TxValidSize < 16Kb; Mem < 14Mb; Cpu < 10_000M" $
-                    let
-                        ctx = updateProtocolContext tp
-                        getValidator ad = TestUtilsCommon.findValidator tp ad
-                        getMintingPolicy cs = TestUtilsCommon.findMintingPolicy tp cs
-                        (eval_log, eval_err, eval_size) = OffChainEval.testContext getValidator getMintingPolicy ctx
-                    in do
-                        eval_log `OffChainEval.assertContainsAnyOf` []
-                        OffChainEval.assertBudgetAndSize eval_err eval_size OffChainEval.maxMemory OffChainEval.maxCPU OffChainEval.maxTxSize
-                ]
-            ,
-                Tasty.testGroup
-                "Testing size and resources2"
-                [
-                    Tasty.testCase "Test Valid Update Tx" $
-                    let
-                        name = "export/ProtocolOnChain-validatorCode"
-                        protocolPolicyID_CS = T.tpProtocolPolicyID_CS tp
-                        tokenEmergencyAdminPolicy_CS =T.tpTokenEmergencyAdminPolicy_CS tp  
-                        ctx = updateProtocolContext tp
-                        datum = protocolDatum_MockData tp
-                        redeemer =  ProtocolT.mkDatumUpdateRedeemer
-                        validator = ProtocolOnChain.validatorCode 
-                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData protocolPolicyID_CS )
-                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData tokenEmergencyAdminPolicy_CS)
-                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData datum )
-                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData redeemer)
-                                `PlutusTx.applyCode` PlutusTx.liftCode (LedgerApiV2.toBuiltinData ctx )
-                        getValidator ad = TestUtilsCommon.findValidator tp ad
-                        getMintingPolicy cs = TestUtilsCommon.findMintingPolicy tp cs
-                        (eval_log, eval_err, eval_size) = OffChainEval.testContext getValidator getMintingPolicy ctx
-                    in do
-                        _ <- P.putStrLn $ (name ++ ".namedDeBruijn.flat") ++ " exporting..."
-                        _ <- Deploy.writeCompiledCodeToBinaryFile (name ++ ".namedDeBruijn.flat") validator 
-                        _ <- P.putStrLn $ (name ++ ".namedDeBruijn.flat") ++ " exported successfully."
-                        -- Run the uplc convert command
-                        _ <- P.putStrLn $ (name ++ ".textual.flat") ++ " exporting..."
-                        _ <- SystemProcess.callCommand $ "uplc convert -i \"./" ++ (name ++ ".namedDeBruijn.flat") ++ "\" --if flat-namedDeBruijn -o \"./" ++ (name ++ ".textual.flat") ++ "\" --of textual"
-                        _ <- P.putStrLn $ (name ++ ".textual.flat") ++ " exported successfully."
-                        _ <- P.putStrLn $ (name ++ ".logs") ++ " evaluating..."
-                        -- Run the uplc evaluate command
-                        _ <- SystemProcess.callCommand $ "uplc evaluate -i \"./" ++ (name ++ ".namedDeBruijn.flat") ++ "\" --if flat-namedDeBruijn --trace-mode LogsWithBudgets -o \"./" ++ (name ++ ".logs") ++ "\""
-                        _ <- P.putStrLn $ (name ++ ".logs") ++ " evaluating successfully."
-                        _ <- P.putStrLn $ name ++ " Converting logs...!"
-                        -- Generate the CPU flame graph
-                        _ <- SystemProcess.callCommand $ "cat \"./" ++ (name ++ ".logs") ++ "\" | traceToStacks | flamegraph.pl > \"./" ++ (name ++ ".cpu.svg") ++ "\""
-                        -- Generate the memory flame graph
-                        _ <- SystemProcess.callCommand $ "cat \"./" ++ (name ++ ".logs") ++ "\" | traceToStacks --column 2 | flamegraph.pl > \"./" ++ (name ++ ".mem.svg") ++ "\""
-                        _ <- P.putStrLn $ name ++ " Finish!"
-                        eval_log `OffChainEval.assertContainsAnyOf` []
-                        OffChainEval.assertBudgetAndSize eval_err eval_size OffChainEval.maxMemory OffChainEval.maxCPU OffChainEval.maxTxSize
-                ],
-            Tasty.testCase
-            "Datum not changed must succeed"
-            ( OffChainEval.evaluateScriptValidatorEX
-                (T.tpProtocolValidator tp)
-                (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                ProtocolT.mkDatumUpdateRedeemer
-                (updateProtocolContext tp)
-                `OffChainEval.logAassertContainsAnyOf` []
-            )
-        , Tasty.testCase "Updating modifiable fields must succeed" $
-            let
-                newPubKeyHash = "abfff883edcf7a2e38628015cebb72952e361b2c8a2262f7daf90000"
-                outputDatum =
-                    (protocolDatumType_MockData tp)
-                        {
-                            ProtocolT.pdAdmins = [newPubKeyHash]
-                        }
-                outputProtocolUTxO = (protocolUTxO_MockData tp) {LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum outputDatum}
-                ctx =
-                    updateProtocolContext tp
-                        OffChainEval.|> OffChainEval.setOutputs
-                            [ outputProtocolUTxO
-                            ]
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` []
-                )
-
-        , Tasty.testCase "Updating minAda must fail" $
-            let
-                outputDatum =
-                    (protocolDatumType_MockData tp)
-                        { ProtocolT.pdMinADA = 1_000_000
-                        }
-                outputProtocolUTxO = (protocolUTxO_MockData tp) {LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum outputDatum}
-                ctx =
-                    updateProtocolContext tp
-                        OffChainEval.|> OffChainEval.setOutputs
-                            [ outputProtocolUTxO
-                            ]
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["not isCorrect_Output_ProtocolDatum_Updated"]
-                )
-        , Tasty.testCase "Changing value must fail" $
-            let
-                outputProtocolUTxO =
-                    (protocolUTxO_MockData tp)
-                        { LedgerApiV2.txOutValue =
-                            T.toAlter_Value_Adding_SomeADA
-                                <> LedgerApiV2.txOutValue (protocolUTxO_MockData tp)
-                        }
-                ctx =
-                    updateProtocolContext tp
-                        OffChainEval.|> OffChainEval.setOutputs
-                            [ outputProtocolUTxO
-                            ]
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["not isCorrect_Output_ProtocolDatum_Value_NotChanged"]
-                )
-        , Tasty.testCase "Not signed by admins must fail" $
-            let
-                ctx = updateProtocolContext tp OffChainEval.|> OffChainEval.setSignatories []
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["not isSignedByAny admins nor isAdminTokenPresent"]
-                )
-        , Tasty.testCase "Too big tx range must fail" $
-            let
-                ctx =
-                    updateProtocolContext tp
-                        OffChainEval.|> OffChainEval.setValidRange (OffChainEval.createInValidRange (T.tpTransactionDate tp) T.validTxTimeRange)
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["not isValidRange"]
-                )
-        , Tasty.testCase "No protocol output must fail" $
-            let
-                ctx = updateProtocolContext tp OffChainEval.|> OffChainEval.setOutputs []
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["Expected at least one output to scripts addresses"]
-                )
-        , -- , Tasty.testCase "More than one protocol output must fail" $
-          --     let ctx =
-          --             updateProtocolContext tp
-          --                 OffChainEval.|> OffChainEval.setOutputs [protocolUTxO_MockData tp, protocolUTxO_MockData tp]
-          --      in ( OffChainEval.evaluateScriptValidatorEX
-          --             (T.tpProtocolValidator tp)
-          --             (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-          --             ProtocolT.mkDatumUpdateRedeemer
-          --             ctx
-          --             `OffChainEval.logAassertContainsAnyOf` ["Expected exactly one Protocol output"]
-          --         )
-          -- Double satisfaction: try to steal the Protocol ID by replacing
-          -- it with another token.
-          Tasty.testCase "Double satisfaction must fail" $
-            let
-                ctx =
-                    updateProtocolContext tp
-                        OffChainEval.|> OffChainEval.setInputs
-                            [protocolUTxO_MockData tp, protocolUTxO']
-                        OffChainEval.|> OffChainEval.setOutputs
-                            [walletUTxO, protocolUTxO']
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["Expected Protocol at output to script index 0"]
-                )
-        , -- Double satisfaction: if two Protocol UTxOs have the same NFT, the
-          -- attack succeeds.
-          Tasty.testCase "Double satisfaction must fail  with both inputs had the same NFT" $
-            let
-                ctx =
-                    updateProtocolContext tp
-                        OffChainEval.|> OffChainEval.setInputs
-                            [protocolUTxO'', protocolUTxO_MockData tp ]
-                        OffChainEval.|> OffChainEval.setOutputs
-                            [walletUTxO, protocolUTxO'']
-            in
-                ( OffChainEval.evaluateScriptValidatorEX
-                    (T.tpProtocolValidator tp)
-                    (ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                    ProtocolT.mkDatumUpdateRedeemer
-                    ctx
-                    `OffChainEval.logAassertContainsAnyOf` ["Expected exactly one Protocol input"]
-                )
+        [ protocol_Validator_Redeemer_DatumUpdate_Tests tp
+        , protocol_Validator_Redeemer_UpdateMinADA_Tests tp
         ]
-    where
-        exampleCS' = "00000000000000000000000000000000000000000000000000000000"
-        walletUTxO =
-            LedgerApiV2.TxOut
-                (LedgerAddress.pubKeyHashAddress (LedgerAddress.PaymentPubKeyHash "a2") Nothing)
-                (LedgerAda.lovelaceValueOf T.minAdaForUTxOWithTokens <> LedgerApiV2.singleton (T.tpProtocolPolicyID_CS tp) T.protocolID_TN 1)
-                LedgerApiV2.NoOutputDatum
-                Nothing
-        protocolUTxO' =
-            LedgerApiV2.TxOut
-                (OffChainHelpers.addressValidator (T.tpProtocolValidator_Hash tp))
-                (LedgerAda.lovelaceValueOf T.minAdaProtocolDatum <> LedgerApiV2.singleton exampleCS' T.protocolID_TN 1)
-                (LedgerApiV2.OutputDatum $ ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                Nothing
-        protocolUTxO'' =
-            LedgerApiV2.TxOut
-                (OffChainHelpers.addressValidator (T.tpProtocolValidator_Hash tp))
-                (LedgerAda.lovelaceValueOf T.minAdaProtocolDatum <> LedgerApiV2.singleton (T.tpProtocolPolicyID_CS tp) T.protocolID_TN 1)
-                (LedgerApiV2.OutputDatum $ ProtocolT.mkDatum (protocolDatumType_MockData tp))
-                Nothing
+
+--------------------------------------------------------------------------------
+
+protocol_Validator_Redeemer_DatumUpdate_Tests :: TestParams -> Tasty.TestTree
+protocol_Validator_Redeemer_DatumUpdate_Tests tp =
+    let
+        ------------------------
+        txName = show Protocol_DatumUpdate_Tx
+        selectedRedeemer = RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)
+        redeemerName = getRedeemerNameFromLog selectedRedeemer
+        ------------------------
+    in
+        Tasty.testGroup ("TX NAME: " ++ txName ++ " - REDEEMER: " ++ redeemerName ++ " - Tests") $
+                let
+                    ctx = protocol_DatumUpdate_TxContext tp [] "aaff"
+                in
+                    [
+                        -- Happy Path
+                        Tasty.testCase "Update Datum with no change must succeed" $ do
+                            let ctx' = ctx
+                            results <- testContextWrapper tp ctx'
+                            (Nothing, results)
+                                `assertResultsContainAnyOf` []
+                        
+                        -- Testing valid datum update with changes
+                        , Tasty.testCase "Update Datum with valid changes must succeed" $ do
+                            let 
+                                newAdmins = newAdmin : T.tpProtocolAdmins tp
+                                newTokenAdminPolicy = newTokenPolicy_CS
+                                ctx' = protocol_DatumUpdate_TxContext tp newAdmins newTokenAdminPolicy
+                            results <- testContextWrapper tp ctx'
+                            (Nothing, results)
+                                `assertResultsContainAnyOf` []
+
+                        -- Testing authorization failures
+                        , Tasty.testCase "Missing admin signature must fail" $ do
+                            let
+                                ctx' = ctx |> setSignatories []
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isSignedByAny admins nor isAdminTokenPresent"]
+
+                        -- Testing invalid authorization signature
+                        , Tasty.testCase "Invalid admin signature must fail" $ do
+                            let 
+                                ctx' = ctx |> setSignatories [newAdmin]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isSignedByAny admins nor isAdminTokenPresent"]
+
+                        -- Testing invalid transaction range
+                        , Tasty.testCase "Invalid transaction range must fail" $ do
+                            let
+                                ctx' = ctx |> setValidyRange (createInValidRange (tpTransactionDate tp))
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isValidRange"]
+
+                        -- Testing missing protocol output
+                        , Tasty.testCase "Missing protocol output must fail" $ do
+                            let
+                                ctx' = ctx |> setOutputs []
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["Expected at least one output to scripts addresses"]
+
+                        -- Testing changing protected datum fields
+                        , Tasty.testCase "Changing protocol version must fail" $ do
+                            let
+                                invalidDatum = (protocol_DatumType_MockData tp) { ProtocolT.pdProtocolVersion = 999 }
+                                invalidProtocolUTxO = (protocol_UTxO_MockData tp) 
+                                    { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum invalidDatum }
+                                ctx' = ctx |> setOutputs [invalidProtocolUTxO]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_Updated"]
+
+                        -- Testing value preservation
+                        , Tasty.testCase "Changing output value must fail" $ do
+                            let
+                                extraValue = LedgerAda.lovelaceValueOf 5_000_000
+                                invalidProtocolUTxO = (protocol_UTxO_MockData tp) 
+                                    { LedgerApiV2.txOutValue = LedgerApiV2.txOutValue (protocol_UTxO_MockData tp) <> extraValue }
+                                ctx' = ctx |> setOutputs [invalidProtocolUTxO]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_Value_NotChanged"]
+
+                        -- Testing emergency path
+                        , Tasty.testCase "Emergency withdrawal without token must fail" $ do
+                            let 
+                                ctx' = ctx |> setInputsAndAddRedeemers [(protocol_UTxO_MockData tp, ProtocolT.mkEmergencyRedeemer)]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_Emergency_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isEmergencyAdminTokenPresent"]
+
+                        -- Testing multiple inputs
+                        , Tasty.testCase "Multiple protocol inputs must fail" $ do
+                            let
+                                extraInput = protocol_UTxO_MockData tp
+                                ctx' = ctx |> addInputsWithTxOutRef [(extraInput, LedgerApiV2.TxOutRef extraTxId 1)]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["Expected exactly one Protocol input"]
+                    ]
+
+--------------------------------------------------------------------------------
+
+protocol_Validator_Redeemer_UpdateMinADA_Tests :: TestParams -> Tasty.TestTree
+protocol_Validator_Redeemer_UpdateMinADA_Tests tp =
+    let
+        ------------------------
+        txName = show Protocol_UpdateMinADA_Tx
+        selectedRedeemer = RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)
+        redeemerName = getRedeemerNameFromLog selectedRedeemer
+        ------------------------
+    in
+        Tasty.testGroup ("TX NAME: " ++ txName ++ " - REDEEMER: " ++ redeemerName ++ " - Tests") $
+                let
+                    ctx = protocol_UpdateMinADA_TxContext tp toAlter_minAda
+                in
+                    [
+                        -- Happy Path
+                        Tasty.testCase "Changing min ADA correctly must succeed" $ do
+                            let ctx' = ctx
+                            results <- testContextWrapper tp ctx'
+                            (Nothing, results)
+                                `assertResultsContainAnyOf` []
+
+                        -- Testing invalid minADA value
+                        , Tasty.testCase "Zero minADA value must fail" $ do
+                            let
+                                ctx' = protocol_UpdateMinADA_TxContext tp 0
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not min ADA > 0"]
+
+                        -- Testing auth failure
+                        , Tasty.testCase "Missing admin signature must fail" $ do
+                            let
+                                ctx' = ctx |> setSignatories []
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isSignedByAny admins nor isAdminTokenPresent"]
+
+                        -- Testing invalid value adjustment
+                        , Tasty.testCase "Incorrect ADA value adjustment must fail" $ do
+                            let
+                                wrongValueAdjustment = toAlter_minAda - 1
+                                invalidProtocolUTxO = (protocol_UTxO_MockData tp)
+                                    { LedgerApiV2.txOutValue = LedgerApiV2.txOutValue (protocol_UTxO_MockData tp) 
+                                        <> LedgerAda.lovelaceValueOf wrongValueAdjustment }
+                                ctx' = ctx |> setOutputs [invalidProtocolUTxO]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_Value_ChangedADA"]
+
+                        -- Testing invalid datum update
+                        , Tasty.testCase "Changing other datum fields must fail" $ do
+                            let
+                                invalidDatum = (protocol_DatumType_MockData tp) 
+                                    { ProtocolT.pdMinADA = toAlter_minAda
+                                    , ProtocolT.pdAdmins = [newAdmin] -- Should not change other fields
+                                    }
+                                invalidProtocolUTxO = (protocol_UTxO_MockData tp)
+                                    { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum invalidDatum }
+                                ctx' = ctx |> setOutputs [invalidProtocolUTxO]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_UpdatedMinADA"]
+                        
+                        -- Testing invalid datum update
+                        , Tasty.testCase "Invalid datum fields must fail" $ do
+                            let
+                                invalidDatum = (protocol_DatumType_MockData tp) 
+                                    { ProtocolT.pdMinADA = toAlter_minAda -1
+                                    }
+                                invalidProtocolUTxO = (protocol_UTxO_MockData tp)
+                                    { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum invalidDatum }
+                                ctx' = ctx |> setOutputs [invalidProtocolUTxO]
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_Value_ChangedADA"]
+
+
+                        -- Testing transaction range
+                        , Tasty.testCase "Invalid transaction range must fail" $ do
+                            let
+                                ctx' = ctx |> setValidyRange (createInValidRange (tpTransactionDate tp))
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["not isValidRange"]
+
+                        -- Testing missing output
+                        , Tasty.testCase "Missing protocol output must fail" $ do
+                            let
+                                ctx' = ctx |> setOutputs []
+                            results <- testContextWrapper tp ctx'
+                            (Just (RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)), results)
+                                `assertResultsContainAnyOf` ["Expected at least one output to scripts addresses"]
+                    ]
+
+
+-- protocol_Validator_Redeemer_DatumUpdate_Tests :: TestParams -> Tasty.TestTree
+-- protocol_Validator_Redeemer_DatumUpdate_Tests tp =
+--     let
+--         ------------------------
+--         txName = show Protocol_DatumUpdate_Tx
+--         selectedRedeemer = RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)
+--         redeemerName = getRedeemerNameFromLog selectedRedeemer
+--         ------------------------
+--     in
+--         Tasty.testGroup ("TX NAME: " ++ txName ++ " - REDEEMER: " ++ redeemerName ++ " - Tests") $
+--                 let
+--                     ctx = protocol_DatumUpdate_TxContext tp [] "aaff"
+--                 in
+--                     [
+--                         Tasty.testCase "Update Datum with not change must succeed" $ do
+--                         let
+--                             ctx' = ctx
+--                         results <- testContextWrapper tp ctx'
+--                         (Nothing, results)
+--                             `assertResultsContainAnyOf` []
+--                         -- , Tasty.testCase "Updating modifiable fields must succeed" $ do
+--                         --     let newPubKeyHash = "abfff883edcf7a2e38628015cebb72952e361b2c8a2262f7daf90000"
+--                         --         outputDatum =
+--                         --             (protocol_DatumType_MockData tp)
+--                         --                 { ProtocolT.pdOraclePaymentPubKey =
+--                         --                     LedgerAddress.PaymentPubKey $
+--                         --                         Ledger.PubKey $
+--                         --                             LedgerApiV2.LedgerBytes $
+--                         --                                 LedgerApiV2.getPubKeyHash $
+--                         --                                     LedgerAddress.unPaymentPubKeyHash $
+--                         --                                         LedgerAddress.PaymentPubKeyHash newPubKeyHash
+--                         --                 , ProtocolT.pdAdmins = [newPubKeyHash]
+--                         --                 , ProtocolT.pdFundCategories = [ProtocolT.FundCategory 4_000_000 4_000_000 4_000_000]
+--                         --                 , ProtocolT.pdFundLifeTime = ProtocolT.mkMinMaxDef 1 1 1
+--                         --                 , ProtocolT.pdRequiredMAYZForSwapOffer = 4_000_000
+--                         --                 , ProtocolT.pdRequiredMAYZForBuyOrder = 4_000_000
+--                         --                 , ProtocolT.pdCommissionCampaign_PerYear_InBPx1e3 = ProtocolT.mkMinMaxDef 1 1 1
+--                         --                 , ProtocolT.pdCommissionSwapOffer_InBPx1e3 = ProtocolT.mkMinMaxDef 1 1 1
+--                         --                 , ProtocolT.pdCommissionBuyOrder_InBPx1e3 = ProtocolT.mkMinMaxDef 1 1 1
+--                         --                 , ProtocolT.pdShare_InBPx1e2_Protocol = 400_000
+--                         --                 , ProtocolT.pdShare_InBPx1e2_Delegators = 300_000
+--                         --                 , ProtocolT.pdShare_InBPx1e2_Managers = 300_000
+--                         --                 , ProtocolT.pdDelegatorsAdmins = [newPubKeyHash]
+--                         --                 }
+--                         --         outputProtocolUTxO = (protocol_UTxO_MockData tp) {LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum outputDatum}
+--                         --         ctx' = ctx
+--                         --                 |> setOutputs [outputProtocolUTxO]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Nothing, results)
+--                         --         `assertResultsContainAnyOf` []
+--                         -- , Tasty.testCase "Updating ProtocolT.pdScriptPolicyID_CS must fail" $ do
+--                         --     let outputDatum =
+--                         --             (protocol_DatumType_MockData tp)
+--                         --                 { ProtocolT.pdScriptPolicyID_CS =
+--                         --                     "d5dec6074942b36b50975294fd801f7f28c907476b1ecc1b57c90000"
+--                         --                 }
+--                         --         outputProtocolUTxO = (protocol_UTxO_MockData tp) {LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum outputDatum}
+--                         --         ctx' = ctx
+--                         --                 |> setOutputs [outputProtocolUTxO]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_Updated"]
+--                         -- , Tasty.testCase "Updating minAda must fail" $ do
+--                         --     let outputDatum =
+--                         --             (protocol_DatumType_MockData tp)
+--                         --                 { ProtocolT.pdMinADA = 1_000_000
+--                         --                 }
+--                         --         outputProtocolUTxO = (protocol_UTxO_MockData tp) {LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ ProtocolT.mkDatum outputDatum}
+--                         --         ctx' = ctx
+--                         --                 |> setOutputs [outputProtocolUTxO]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Datum_Updated"]
+--                         -- , Tasty.testCase "Changing value must fail" $ do
+--                         --     let outputProtocolUTxO =
+--                         --             (protocol_UTxO_MockData tp)
+--                         --                 { LedgerApiV2.txOutValue =
+--                         --                     toAlter_Value_Adding_SomeADA
+--                         --                         <> LedgerApiV2.txOutValue (protocol_UTxO_MockData tp)
+--                         --                 }
+--                         --         ctx' = ctx
+--                         --                 |> setOutputs [outputProtocolUTxO]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["not isCorrect_Output_Protocol_Value_NotChanged"]
+--                         -- , Tasty.testCase "Not signed by any must fail" $ do
+--                         --     let
+--                         --         ctx' = ctx
+--                         --                 |> setSignatories []
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["not isSignedByAny admins nor isAdminTokenPresent"]
+--                         -- , Tasty.testCase "Not signed by admins must fail" $ do
+--                         --     let
+--                         --         ctx' = ctx
+--                         --                 |> setSignatories ["aabb"]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["not isSignedByAny admins nor isAdminTokenPresent"]
+--                         -- , Tasty.testCase "Too big range must fail" $ do
+--                         --     let
+--                         --         ctx' = ctx
+--                         --                 |> setValidyRange (createInValidRange (tpTransactionDate tp))
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["not isValidRange"]
+--                         -- , Tasty.testCase "No protocol output must fail" $ do
+--                         --     let
+--                         --         ctx' = ctx
+--                         --                 |> setOutputs []
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["Expected at least one output to script addresses"]
+--                         -- , Tasty.testCase "Double satisfaction with 2 inputs from same address must fail" $ do
+--                         --     let
+--                         --         walletUTxO_With_NFT_ID =
+--                         --             LedgerApiV2.TxOut
+--                         --                 (LedgerAddress.pubKeyHashAddress (LedgerAddress.PaymentPubKeyHash "a2") Nothing)
+--                         --                 (LedgerAda.lovelaceValueOf minAdaForUTxOWithTokens <> LedgerApiV2.singleton (tpProtocolPolicyID_CS tp) T.protocolID_TN 1)
+--                         --                 LedgerApiV2.NoOutputDatum
+--                         --                 Nothing
+--                         --         exampleCS' = "00000000000000000000000000000000000000000000000000000000"
+--                         --         protocolUTxO_Other_NFT_ID =
+--                         --             LedgerApiV2.TxOut
+--                         --                 (OffChainHelpers.addressValidator (tpProtocolValidator_Hash tp))
+--                         --                 (LedgerAda.lovelaceValueOf minAdaProtocolDatum <> LedgerApiV2.singleton exampleCS' T.protocolID_TN 1)
+--                         --                 (LedgerApiV2.OutputDatum $ ProtocolT.mkDatum (protocol_DatumType_MockData tp))
+--                         --                 Nothing
+--                         --         ctx' = ctx
+--                         --                 |> setInputsAndAddRedeemers
+--                         --                     [(protocol_UTxO_MockData tp, ProtocolT.mkDatumUpdateRedeemer), (protocolUTxO_Other_NFT_ID, ProtocolT.mkDatumUpdateRedeemer)]
+--                         --                 |> setOutputs
+--                         --                     [walletUTxO_With_NFT_ID, protocolUTxO_Other_NFT_ID]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["Expected Protocol at output to script index 0"]
+--                         -- , Tasty.testCase "Double satisfaction with both inputs had the same NFT (not realistic) must fail" $ do
+--                         --     let
+--                         --         walletUTxO_With_NFT_ID =
+--                         --             LedgerApiV2.TxOut
+--                         --                 (LedgerAddress.pubKeyHashAddress (LedgerAddress.PaymentPubKeyHash "a2") Nothing)
+--                         --                 (LedgerAda.lovelaceValueOf minAdaForUTxOWithTokens <> LedgerApiV2.singleton (tpProtocolPolicyID_CS tp) T.protocolID_TN 1)
+--                         --                 LedgerApiV2.NoOutputDatum
+--                         --                 Nothing
+--                         --         protocolUTxO_SameNFT_ID_NOT_REALISTIC =
+--                         --             LedgerApiV2.TxOut
+--                         --                 (OffChainHelpers.addressValidator (tpProtocolValidator_Hash tp))
+--                         --                 (LedgerAda.lovelaceValueOf minAdaProtocolDatum <> LedgerApiV2.singleton (tpProtocolPolicyID_CS tp) T.protocolID_TN 1)
+--                         --                 (LedgerApiV2.OutputDatum $ ProtocolT.mkDatum (protocol_DatumType_MockData tp))
+--                         --                 Nothing
+--                         --         ctx' = ctx
+--                         --                 |> setInputsAndAddRedeemers
+--                         --                     [(protocolUTxO_SameNFT_ID_NOT_REALISTIC, ProtocolT.mkDatumUpdateRedeemer), (protocol_UTxO_MockData tp, ProtocolT.mkDatumUpdateRedeemer)]
+--                         --                 |> setOutputs
+--                         --                     [walletUTxO_With_NFT_ID, protocolUTxO_SameNFT_ID_NOT_REALISTIC]
+--                         --     results <- testContextWrapper tp ctx'
+--                         --     (Just (RedeemerLogValidator (Just Protocol_DatumUpdate_TestRedeemer)), results)
+--                         --         `assertResultsContainAnyOf` ["Expected exactly one Protocol input"]
+
+--                         ]
+
+-- --------------------------------------------------------------------------------
+
+-- protocol_Validator_Redeemer_UpdateMinADA_Tests :: TestParams -> Tasty.TestTree
+-- protocol_Validator_Redeemer_UpdateMinADA_Tests tp =
+--     let
+--         ------------------------
+--         txName = show Protocol_UpdateMinADA_Tx
+--         selectedRedeemer = RedeemerLogValidator (Just Protocol_UpdateMinADA_TestRedeemer)
+--         redeemerName = getRedeemerNameFromLog selectedRedeemer
+--         ------------------------
+--     in
+--         Tasty.testGroup ("TX NAME: " ++ txName ++ " - REDEEMER: " ++ redeemerName ++ " - Tests") $
+--                 let
+--                     ctx = protocol_UpdateMinADA_TxContext tp toAlter_minAda
+--                 in
+--                     [
+--                         Tasty.testCase "Changing min ADA correctly must succeed" $ do
+--                             let ctx' = ctx
+--                             results <- testContextWrapper tp ctx'
+--                             (Nothing, results)
+--                                 `assertResultsContainAnyOf` []
+--                     ]
+
+--------------------------------------------------------------------------------
