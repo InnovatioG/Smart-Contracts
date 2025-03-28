@@ -643,7 +643,7 @@ getOwnOutputs !vp =
     [ output
     | output <- LedgerApiV2.txInfoOutputs $ vInfo vp
      , let address = LedgerApiV2.txOutAddress output
-    , OnChainHelpers.isScriptAddress address && LedgerApiV2.txOutAddress output == address
+    , OnChainHelpers.isScriptAddress address && LedgerApiV2.txOutAddress output == vOwnAddress vp
     ]
 
 {-# INLINEABLE getRefInputs #-}
@@ -814,6 +814,8 @@ mkPolicy (T.PolicyParams !protocolPolicyID_CS !campaignPolicy_TxOutRef !campaign
                     -- Que se mintee Campaign ID con own póliza
                     -- solo se puede ejecutar una vez por que esta parametrizado con campaignPolicy_TxOutRef
                     -- Que el CampaignDatum tenga el Campaign ID
+                    ---------------------
+                    -- TODO: falta validar que sea protocol admin
                     ---------------------
                     traceIfFalse "not isTxOutAnInput" (OnChainHelpers.isTxOutAnInput campaignPolicy_TxOutRef info)
                         && traceIfFalse "not isMintingID" isMintingID

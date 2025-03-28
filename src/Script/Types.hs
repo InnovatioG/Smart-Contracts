@@ -33,12 +33,21 @@ import qualified Schema
 -- Import Internos
 --------------------------------------------------------------------------------2
 
+import qualified Constants            as T
 import qualified Helpers.Types        as T
+import qualified Protocol.Types       as ProtocolT
 import qualified Types                as T
 
 --------------------------------------------------------------------------------2
 -- Modulo
 --------------------------------------------------------------------------------2
+
+-- Any change in the logic, datum or redeemer must change the version of the scriptVersion
+scriptVersion :: Integer
+scriptVersion = 1
+
+ownVersion :: Integer
+ownVersion = T.mkVersionWithDependency [ProtocolT.protocolVersion] scriptVersion
 
 --------------------------------------------------------------------------------2
 -- Params
@@ -77,7 +86,8 @@ PlutusTx.makeIsDataIndexed ''ValidatorParams [('ValidatorParams, 0)]
 
 data ScriptDatumType
     = ScriptDatumType
-          { sdAdminPaymentPKH :: T.WalletPaymentPKH
+          { sdVersion         :: Integer
+          , sdAdminPaymentPKH :: T.WalletPaymentPKH
           , sdAdminStakePKH   :: Maybe T.WalletPaymentPKH
           , sdScriptHash      :: BuiltinByteString
           }
@@ -86,7 +96,8 @@ data ScriptDatumType
 instance Eq ScriptDatumType where
     {-# INLINEABLE (==) #-}
     sd1 == sd2 =
-            sdAdminPaymentPKH sd1 == sdAdminPaymentPKH sd2
+        sdVersion sd1 == sdVersion sd2
+            && sdAdminPaymentPKH sd1 == sdAdminPaymentPKH sd2
             && sdAdminStakePKH sd1 == sdAdminStakePKH sd2
             && sdScriptHash sd1 == sdScriptHash sd2
 
@@ -115,7 +126,7 @@ instance T.ShowDatum ValidatorDatum where
 
 {-# INLINEABLE mkScriptDatumType #-}
 mkScriptDatumType ::T.WalletPaymentPKH -> Maybe T.WalletPaymentPKH -> BuiltinByteString -> ScriptDatumType
-mkScriptDatumType = ScriptDatumType
+mkScriptDatumType = ScriptDatumType ownVersion
 
 {-# INLINEABLE mkScriptDatum #-}
 mkScriptDatum :: T.WalletPaymentPKH -> Maybe T.WalletPaymentPKH -> BuiltinByteString -> ValidatorDatum

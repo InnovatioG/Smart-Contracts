@@ -162,9 +162,11 @@ campaign_FundsCollect_TxContext = campaignFunds_Collect_TxContext
 campaign_InitializeCampaign_TxContext :: TestParams -> LedgerApiV2.ScriptContext
 campaign_InitializeCampaign_TxContext tp =
     let
-        input_Campaign_UTxO = campaign_UTxO_MockData tp
+        input_Campaign_UTxO = campaign_UTxO_With_Added_CampaignFunds_MockData tp
         input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
-        
+
+        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_Deposits_MockData tp 0 deposit_MockData
+
         output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatus
             input_Campaign_Datum
             CampaignT.CsInitialized
@@ -173,7 +175,7 @@ campaign_InitializeCampaign_TxContext tp =
             { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum output_Campaign_Datum }
     in
         mkContext
-            |> setInputsRef [protocol_UTxO_MockData tp]
+            |> setInputsRef [protocol_UTxO_MockData tp, input_CampaignFunds_UTxO]
             |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkInitializeCampaignRedeemer)]
             |> setOutputs [output_Campaign_UTxO]
             |> setSignatories (tpProtocolAdmins tp)
@@ -186,12 +188,18 @@ campaign_InitializeCampaign_TxContext tp =
 campaign_ReachedCampaign_TxContext :: TestParams -> LedgerApiV2.ScriptContext
 campaign_ReachedCampaign_TxContext tp =
     let
-        input_Campaign_UTxO = campaign_UTxO_MockData tp
-        input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
-        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_NoDeposits_MockData tp 0
+        input_Campaign_UTxO' = campaign_UTxO_With_Added_CampaignFunds_MockData tp
         
+        input_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatus
+            (CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO')
+            CampaignT.CsInitialized
+
+        input_Campaign_UTxO = input_Campaign_UTxO'
+            { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum input_Campaign_Datum }
+
         fundedAmount = CampaignT.cdRequestedMinADA input_Campaign_Datum
-        
+
+        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_Deposits_ADA_And_Sold_MockData tp 0 deposit_MockData (tpRequestedMaxADA tp) fundedAmount 
         output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusReached
             input_Campaign_Datum
             fundedAmount
@@ -204,7 +212,7 @@ campaign_ReachedCampaign_TxContext tp =
             |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkReachedCampaignRedeemer)]
             |> setOutputs [output_Campaign_UTxO]
             |> setSignatories (tpProtocolAdmins tp)
-            |> setValidyRange (createValidRange (tpTransactionDate tp))
+            |> setValidyRange (createValidRange (tpDeadline tp + 1000000000))
 
 --------------------------------------------------------------------------------
 -- Campaign Not Reached
@@ -213,13 +221,19 @@ campaign_ReachedCampaign_TxContext tp =
 campaign_NotReachedCampaign_TxContext :: TestParams -> LedgerApiV2.ScriptContext
 campaign_NotReachedCampaign_TxContext tp =
     let
-        input_Campaign_UTxO = campaign_UTxO_MockData tp
-        input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
-        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_NoDeposits_MockData tp 0
+        input_Campaign_UTxO' = campaign_UTxO_With_Added_CampaignFunds_MockData tp
         
-        fundedAmount = CampaignT.cdRequestedMinADA input_Campaign_Datum - 1 -- Less than minimum
-        
-        output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusNotReached
+        input_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatus
+            (CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO')
+            CampaignT.CsInitialized
+
+        input_Campaign_UTxO = input_Campaign_UTxO'
+            { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum input_Campaign_Datum }
+
+        fundedAmount = CampaignT.cdRequestedMinADA input_Campaign_Datum - 1
+
+        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_Deposits_ADA_And_Sold_MockData tp 0 deposit_MockData (tpRequestedMaxADA tp) fundedAmount 
+        output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusReached
             input_Campaign_Datum
             fundedAmount
             
@@ -228,10 +242,10 @@ campaign_NotReachedCampaign_TxContext tp =
     in
         mkContext
             |> setInputsRef [protocol_UTxO_MockData tp, input_CampaignFunds_UTxO]
-            |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkNotReachedCampaignRedeemer)]
+            |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkReachedCampaignRedeemer)]
             |> setOutputs [output_Campaign_UTxO]
             |> setSignatories (tpProtocolAdmins tp)
-            |> setValidyRange (createValidRange (tpTransactionDate tp))
+            |> setValidyRange (createValidRange (tpDeadline tp + 1000000000))
 
 --------------------------------------------------------------------------------
 -- Campaign Milestone Approve
@@ -240,8 +254,14 @@ campaign_NotReachedCampaign_TxContext tp =
 campaign_MilestoneAprobe_TxContext :: TestParams -> Integer -> LedgerApiV2.ScriptContext
 campaign_MilestoneAprobe_TxContext tp milestoneIndex =
     let
-        input_Campaign_UTxO = campaign_UTxO_MockData tp
-        input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
+        input_Campaign_UTxO' = campaign_UTxO_With_Added_CampaignFunds_MockData tp
+        
+        input_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatus
+            (CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO')
+            CampaignT.CsReached
+
+        input_Campaign_UTxO = input_Campaign_UTxO'
+            { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum input_Campaign_Datum }
         
         output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneAprobed
             input_Campaign_Datum
@@ -264,8 +284,14 @@ campaign_MilestoneAprobe_TxContext tp milestoneIndex =
 campaign_MilestoneReprobe_TxContext :: TestParams -> Integer -> LedgerApiV2.ScriptContext
 campaign_MilestoneReprobe_TxContext tp milestoneIndex =
     let
-        input_Campaign_UTxO = campaign_UTxO_MockData tp
-        input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
+        input_Campaign_UTxO' = campaign_UTxO_With_Added_CampaignFunds_MockData tp
+        
+        input_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatus
+            (CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO')
+            CampaignT.CsReached
+
+        input_Campaign_UTxO = input_Campaign_UTxO'
+            { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum input_Campaign_Datum }
         
         output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneReprobed
             input_Campaign_Datum

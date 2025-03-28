@@ -23,6 +23,7 @@ import qualified Campaign.Funds.Types            as CampaignFundsT
 import qualified Campaign.Helpers                as CampaignHelpers
 import qualified Campaign.Types                  as CampaignT
 import qualified Helpers.OnChain                 as OnChainHelpers
+import qualified Ledger.Ada                      as LedgerAda
 import           TestUtils.Contracts.InitialData
 import           TestUtils.Helpers
 import           TestUtils.HelpersINNOVATIO
@@ -122,8 +123,17 @@ campaignFunds_Merge_TxContext tp =
 
         -- Two Campaign Funds to merge
         input_CampaignFunds1_UTxO = campaignFunds_UTxO_With_NoDeposits_MockData tp 0
-        input_CampaignFunds2_UTxO = campaignFunds_UTxO_With_Deposits_MockData tp 1 (tpRequestedMinADA tp)
+        input_CampaignFunds2_UTxO = campaignFunds_UTxO_With_Deposits_MockData tp 1 deposit_MockData
+        inputDatums =
+            [ CampaignFundsT.getCampaignFunds_DatumType_From_UTxO input_CampaignFunds1_UTxO
+            , CampaignFundsT.getCampaignFunds_DatumType_From_UTxO input_CampaignFunds2_UTxO
+            ]
 
+        inputValues =
+            [ LedgerApiV2.txOutValue input_CampaignFunds1_UTxO
+            , LedgerApiV2.txOutValue input_CampaignFunds2_UTxO
+            ]
+        -----------------
         -- Output after merge
         output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_CampaignFundsDeleted
             input_Campaign_Datum
@@ -133,16 +143,40 @@ campaignFunds_Merge_TxContext tp =
             { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum output_Campaign_Datum }
 
         -- Merged output for CampaignFunds
-        output_CampaignFunds_UTxO = input_CampaignFunds1_UTxO -- Use first UTxO as base for merge
+        !minADA = sum (map CampaignFundsT.cfdMinADA inputDatums)
+        !avalaible_CampaignToken = sum (map CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken inputDatums)
+        !sold_CampaignToken = sum (map CampaignFundsT.cfdSubtotal_Sold_CampaignToken inputDatums)
+        !avalaible_ADA = sum (map CampaignFundsT.cfdSubtotal_Avalaible_ADA inputDatums)
+        !collected_ADA = sum (map CampaignFundsT.cfdSubtotal_Collected_ADA inputDatums)
+        !campaignDatum_Out_Control = CampaignHelpers.mkUpdated_CampaignFunds_Datum_With_MergedSubtotals
+            (CampaignFundsT.getCampaignFunds_DatumType_From_UTxO input_CampaignFunds1_UTxO)
+            avalaible_CampaignToken
+            sold_CampaignToken
+            avalaible_ADA
+            collected_ADA
+            minADA
+
+        !totalValue = OnChainHelpers.sumValues inputValues
+        !valueFor_Burning = negate $ OnChainHelpers.getValueOfCurrencySymbol (LedgerApiV2.txOutValue input_CampaignFunds2_UTxO) (tpCampaignFundsPolicyID_CS tp)
+        !valueOut = totalValue <>  valueFor_Burning
+
+        output_CampaignFunds_UTxO = input_CampaignFunds1_UTxO {
+            LedgerApiV2.txOutDatum =
+                LedgerApiV2.OutputDatum $
+                    CampaignFundsT.mkDatum campaignDatum_Out_Control
+            , LedgerApiV2.txOutValue = valueOut
+        }
     in
         mkContext
-            |> setInputsRef [protocol_UTxO_MockData tp]
+            |> setInputsRef [ protocol_UTxO_MockData tp, uTxOForValidatorAsReference tp (tpCampaignValidator tp), uTxOForValidatorAsReference tp (tpCampaignFundsValidator tp), uTxOForMintingAsReference tp (tpCampaignFundsPolicyID tp)]
             |> setInputsAndAddRedeemers
-                [ (input_Campaign_UTxO, CampaignT.mkCampaignFundsMergeRedeemer 2) -- 2 funds being merged
+                [ (input_Campaign_UTxO, CampaignT.mkCampaignFundsMergeRedeemer 2)
                 , (input_CampaignFunds1_UTxO, CampaignFundsT.mkMergeRedeemer)
                 , (input_CampaignFunds2_UTxO, CampaignFundsT.mkMergeRedeemer)
                 ]
             |> setOutputs [output_Campaign_UTxO, output_CampaignFunds_UTxO]
+            |> setMintAndAddRedeemers
+                [(  valueFor_Burning  , CampaignFundsT.mkBurnIDRedeemer)]
             |> setSignatories (tpCampaignAdmins tp)
             |> setValidyRange (createValidRange (tpTransactionDate tp))
 
@@ -153,12 +187,12 @@ campaignFunds_Merge_TxContext tp =
 campaignFunds_Collect_TxContext :: TestParams -> LedgerApiV2.ScriptContext
 campaignFunds_Collect_TxContext tp =
     let
-        collectAmount = 1000000000 -- Amount to collect
+        collectAmount = collect_MockData -- Amount to collect
 
-        input_Campaign_UTxO = campaign_UTxO_With_Added_CampaignFunds_MockData tp
+        input_Campaign_UTxO = campaign_UTxO_Reached_With_Added_CampaignFunds_MockData tp
         input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
 
-        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_NoDeposits_MockData tp 0
+        input_CampaignFunds_UTxO = campaignFunds_UTxO_With_Deposits_And_ADA_MockData tp 0 deposit_MockData (tpRequestedMaxADA tp)
         input_CampaignFunds_Datum = CampaignFundsT.getCampaignFunds_DatumType_From_UTxO input_CampaignFunds_UTxO
 
         -- Update Campaign datum with collected amount
@@ -174,8 +208,10 @@ campaignFunds_Collect_TxContext tp =
             input_CampaignFunds_Datum
             collectAmount
 
+        !valueOut = LedgerApiV2.txOutValue input_CampaignFunds_UTxO <>  negate (LedgerAda.lovelaceValueOf collectAmount  )
+
         output_CampaignFunds_UTxO = input_CampaignFunds_UTxO
-            { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignFundsT.mkDatum output_CampaignFund_Datum }
+            { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignFundsT.mkDatum output_CampaignFund_Datum , LedgerApiV2.txOutValue = valueOut}
     in
         mkContext
             |> setInputsRef [protocol_UTxO_MockData tp]

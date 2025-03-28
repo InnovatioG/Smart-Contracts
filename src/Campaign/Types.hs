@@ -36,10 +36,18 @@ import qualified Constants            as T
 import qualified Helpers.Types        as T
 import qualified Types                as T
 import qualified Helpers.OnChain as OnChainHelpers
+import qualified Protocol.Types as ProtocolT
 
 --------------------------------------------------------------------------------2
 -- Modulo
 --------------------------------------------------------------------------------2
+
+-- Any change in the logic, datum or redeemer must change the version of the fundVersion
+campaignVersion :: Integer
+campaignVersion = 1
+
+ownVersion :: Integer
+ownVersion = T.mkVersionWithDependency [ProtocolT.protocolVersion] campaignVersion
 
 --------------------------------------------------------------------------------2
 -- Params
@@ -116,8 +124,7 @@ PlutusTx.makeIsDataIndexed ''MilestoneStatus [('MsCreated, 1), ('MsSuccess, 2), 
 
 data CampaignMilestones
     = CampaignMilestones
-          { cmEstimatedDeliveryDate :: LedgerApiV2.POSIXTime
-          , cmPerncentage           :: Integer
+          { cmPerncentage           :: Integer
           , cmStatus                :: MilestoneStatus
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Eq, P.Ord, P.Show)
@@ -126,8 +133,7 @@ instance Eq CampaignMilestones where
   {-# INLINABLE (==) #-}
   (==) :: CampaignMilestones -> CampaignMilestones -> Bool
   cm1 == cm2 =
-    cmEstimatedDeliveryDate cm1 == cmEstimatedDeliveryDate cm2
-        && cmPerncentage cm1 == cmPerncentage cm2
+    cmPerncentage cm1 == cmPerncentage cm2
         && cmStatus cm1 == cmStatus cm2
 
 PlutusTx.makeIsDataIndexed ''CampaignMilestones [('CampaignMilestones, 0)]
@@ -267,7 +273,7 @@ mkCampaign_DatumType
     let !adminsOrdered = sort admins
     in  CampaignDatumType
             {
-            cdCampaignVersion = T.campaignVersion
+            cdCampaignVersion = ownVersion
             , cdCampaignPolicy_CS          =  campaignPolicy_CS
             , cdCampaignFundsPolicyID_CS   =  campaignFundsPolicyID_CS
             , cdAdmins                     =  adminsOrdered
@@ -364,6 +370,7 @@ data PolicyRedeemerMintIDType = PolicyRedeemerMintIDType deriving (DataAeson.Fro
 
 instance Eq PolicyRedeemerMintIDType where
     {-# INLINABLE (==) #-}
+    (==) :: PolicyRedeemerMintIDType -> PolicyRedeemerMintIDType -> Bool
     r1 == r2 = r1 == r2
 
 PlutusTx.makeIsDataIndexed

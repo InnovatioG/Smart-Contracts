@@ -32,13 +32,21 @@ import qualified Schema
 -- Import Internos
 --------------------------------------------------------------------------------2
 
+import qualified Campaign.Types       as FundT
+import qualified Constants            as T
+import qualified Helpers.OnChain      as OnChainHelpers
 import qualified Helpers.Types        as T
-import qualified Types       as T
-import qualified Helpers.OnChain as OnChainHelpers
+import qualified Protocol.Types       as ProtocolT
+import qualified Types                as T
 
 --------------------------------------------------------------------------------2
 -- Modulo
 --------------------------------------------------------------------------------2
+
+-- Any change in the logic, datum or redeemer must change the version of the campaignVersion on Campaign.Types
+
+ownVersion :: Integer
+ownVersion = T.mkVersionWithDependency [ProtocolT.protocolVersion] FundT.campaignVersion
 
 --------------------------------------------------------------------------------2
 -- Params
@@ -92,21 +100,23 @@ PlutusTx.makeIsDataIndexed
 
 data CampaignFundsDatumType
     = CampaignFundsDatumType
-          { cfdIndex                    :: Integer
-          , cfdCampaignPolicy_CS        :: T.CS
-          , cfdCampaignFundsPolicyID_CS :: T.CS
-          , cfdSubtotal_Avalaible_CampaignToken       :: Integer
-          , cfdSubtotal_Sold_CampaignToken            :: Integer
-          , cfdSubtotal_Avalaible_ADA            :: Integer
-          , cfdSubtotal_Collected_ADA            :: Integer
-          , cfdMinADA                   :: Integer
+          { cfdVersion                          :: Integer
+          , cfdIndex                            :: Integer
+          , cfdCampaignPolicy_CS                :: T.CS
+          , cfdCampaignFundsPolicyID_CS         :: T.CS
+          , cfdSubtotal_Avalaible_CampaignToken :: Integer
+          , cfdSubtotal_Sold_CampaignToken      :: Integer
+          , cfdSubtotal_Avalaible_ADA           :: Integer
+          , cfdSubtotal_Collected_ADA           :: Integer
+          , cfdMinADA                           :: Integer
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Eq, P.Ord, P.Show)
 
 instance Eq CampaignFundsDatumType where
     {-# INLINEABLE (==) #-}
     ps1 == ps2 =
-        cfdIndex ps1 == cfdIndex ps2
+        cfdVersion ps1 == cfdVersion ps2
+            && cfdIndex ps1 == cfdIndex ps2
             && cfdCampaignPolicy_CS ps1 == cfdCampaignPolicy_CS ps2
             && cfdCampaignFundsPolicyID_CS ps1 == cfdCampaignFundsPolicyID_CS ps2
             && cfdSubtotal_Avalaible_CampaignToken ps1 == cfdSubtotal_Avalaible_CampaignToken ps2
@@ -159,7 +169,7 @@ instance T.ShowDatum ValidatorDatum where
 
 {-# INLINEABLE mkCampaignFunds_DatumType #-}
 mkCampaignFunds_DatumType :: Integer -> T.CS -> T.CS -> Integer -> Integer -> Integer -> Integer -> Integer -> CampaignFundsDatumType
-mkCampaignFunds_DatumType = CampaignFundsDatumType
+mkCampaignFunds_DatumType = CampaignFundsDatumType ownVersion
 
 {-# INLINEABLE mkCampaignFunds_Datum #-}
 mkCampaignFunds_Datum :: Integer ->  T.CS -> T.CS -> Integer -> Integer -> Integer -> Integer -> Integer ->  ValidatorDatum
@@ -169,8 +179,8 @@ mkCampaignFunds_Datum
     campaignFundsPolicyID_CS
     subtotal_Avalaible_CampaignToken
     subtotal_Sold_CampaignToken
-    subtotal_Avalaible_ADA 
-    subtotal_Collected_ADA 
+    subtotal_Avalaible_ADA
+    subtotal_Collected_ADA
     minADA
      =
         CampaignFundsDatum $
@@ -180,8 +190,8 @@ mkCampaignFunds_Datum
                 campaignFundsPolicyID_CS
                 subtotal_Avalaible_CampaignToken
                 subtotal_Sold_CampaignToken
-                subtotal_Avalaible_ADA 
-                subtotal_Collected_ADA 
+                subtotal_Avalaible_ADA
+                subtotal_Collected_ADA
                 minADA
 
 mkDatum :: CampaignFundsDatumType -> LedgerApiV2.Datum
@@ -249,9 +259,7 @@ PlutusTx.makeIsDataIndexed ''ValidatorRedeemerUpdateMinADAType [('ValidatorRedee
 --------------------------------------------------------------------------------2
 
 newtype ValidatorRedeemerDepositType
-    = ValidatorRedeemerDepositType
-          { rdAmount :: Integer
-          }
+    = ValidatorRedeemerDepositType { rdAmount :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerDepositType where
@@ -267,9 +275,7 @@ PlutusTx.makeIsDataIndexed
 --------------------------------------------------------------------------------2
 
 newtype ValidatorRedeemerWithdrawType
-    = ValidatorRedeemerWithdrawType
-          { rwAmount :: Integer
-          }
+    = ValidatorRedeemerWithdrawType { rwAmount :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerWithdrawType where
@@ -285,9 +291,7 @@ PlutusTx.makeIsDataIndexed
 --------------------------------------------------------------------------------2
 
 newtype ValidatorRedeemerSellType
-    = ValidatorRedeemerSellType
-          { rcpcAmount :: Integer
-          }
+    = ValidatorRedeemerSellType { rcpcAmount :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerSellType where
@@ -302,9 +306,7 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------2
 newtype ValidatorRedeemerGetBackType
-    = ValidatorRedeemerGetBackType
-          { rcmcAmount :: Integer
-          }
+    = ValidatorRedeemerGetBackType { rcmcAmount :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerGetBackType where
@@ -320,9 +322,7 @@ PlutusTx.makeIsDataIndexed
 --------------------------------------------------------------------------------2
 
 newtype ValidatorRedeemerCollectType
-    = ValidatorRedeemerCollectType
-          { rcacAmount :: Integer
-          }
+    = ValidatorRedeemerCollectType { rcacAmount :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerCollectType where
@@ -431,17 +431,17 @@ PlutusTx.makeIsDataIndexed
 --------------------------------------------------------------------------------2
 
 getValidatorRedeemerName :: Maybe ValidatorRedeemer -> Maybe P.String
-getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType))     = Just "UpdateMinADA"
-getValidatorRedeemerName (Just (ValidatorRedeemerDeposit ValidatorRedeemerDepositType {}))            = Just "Deposit"
-getValidatorRedeemerName (Just (ValidatorRedeemerWithdraw ValidatorRedeemerWithdrawType {}))          = Just "Withdraw"
-getValidatorRedeemerName (Just (ValidatorRedeemerSell ValidatorRedeemerSellType {}))                  = Just "Sell"
-getValidatorRedeemerName (Just (ValidatorRedeemerGetBack ValidatorRedeemerGetBackType {}))            = Just "GetBack"
-getValidatorRedeemerName (Just (ValidatorRedeemerCollect ValidatorRedeemerCollectType {}))            = Just "Collect"
-getValidatorRedeemerName (Just (ValidatorRedeemerMerge ValidatorRedeemerMergeType))                  = Just "Merge"
-getValidatorRedeemerName (Just (ValidatorRedeemerDelete ValidatorRedeemerDeleteType))                 = Just "Delete"
-getValidatorRedeemerName (Just (ValidatorRedeemerBalanceAssets ValidatorRedeemerBalanceAssetsType))   = Just "BalanceAssets"
-getValidatorRedeemerName (Just (ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType))           = Just "Emergency"
-getValidatorRedeemerName _                                                                             = Nothing
+getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType))   = Just "UpdateMinADA"
+getValidatorRedeemerName (Just (ValidatorRedeemerDeposit ValidatorRedeemerDepositType {}))          = Just "Deposit"
+getValidatorRedeemerName (Just (ValidatorRedeemerWithdraw ValidatorRedeemerWithdrawType {}))        = Just "Withdraw"
+getValidatorRedeemerName (Just (ValidatorRedeemerSell ValidatorRedeemerSellType {}))                = Just "Sell"
+getValidatorRedeemerName (Just (ValidatorRedeemerGetBack ValidatorRedeemerGetBackType {}))          = Just "GetBack"
+getValidatorRedeemerName (Just (ValidatorRedeemerCollect ValidatorRedeemerCollectType {}))          = Just "Collect"
+getValidatorRedeemerName (Just (ValidatorRedeemerMerge ValidatorRedeemerMergeType))                 = Just "Merge"
+getValidatorRedeemerName (Just (ValidatorRedeemerDelete ValidatorRedeemerDeleteType))               = Just "Delete"
+getValidatorRedeemerName (Just (ValidatorRedeemerBalanceAssets ValidatorRedeemerBalanceAssetsType)) = Just "BalanceAssets"
+getValidatorRedeemerName (Just (ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType))         = Just "Emergency"
+getValidatorRedeemerName _                                                                          = Nothing
 
 --------------------------------------------------------------------------------22
 

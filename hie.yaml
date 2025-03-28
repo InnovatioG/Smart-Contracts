@@ -9,4 +9,4 @@ cradle:
       component: "innovatio-founder:exe:deploy"
 
     - path: "./tests"
-      component: "innovatio-founder:test:InnovatioFounderUnitTests"
+      component: "innovatio-founder:test:UnitTests"

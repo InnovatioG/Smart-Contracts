@@ -61,9 +61,9 @@ mkPolicyID (T.PolicyParams !protocolPolicyID_TxOutRef) _ !ctxRaw =
         then ()
         else error ()
     where
-        ------------------
+        ----------------
         !useThisToMakeScriptUnique = True
-        ------------------
+        ----------------
         !ctx = LedgerApiV2.unsafeFromBuiltinData @LedgerContextsV2.ScriptContext ctxRaw
         !info = LedgerContextsV2.scriptContextTxInfo ctx
         ------------------

@@ -88,8 +88,8 @@ generateTestParams deployAllParams = do
                     ------------
                     protocolPolicyID_TxOutRef =
                         LedgerApiV2.TxOutRef
-                            { LedgerApiV2.txOutRefId = "0000000000000000000000000000000000000000000000000000000000000007"
-                            , LedgerApiV2.txOutRefIdx = 1
+                            { LedgerApiV2.txOutRefId = "0000000000000000000000000000000000000000000000000000000000000000"
+                            , LedgerApiV2.txOutRefIdx = 0
                             }
                     campaignPolicy_TxOutRef =
                         LedgerApiV2.TxOutRef
@@ -257,14 +257,14 @@ generateScripts deployAllParams = do
     let
         !testCompiledCodeScripts =
             TestCompiledCodeScripts
-                { tccsProtocolPolicyID_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapProtocolPolicyID_Pre_CborHex deployAllParams
-                , tccsProtocolValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapProtocolValidator_Pre_CborHex deployAllParams
-                , tccsScriptPolicyID_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapScriptPolicyID_Pre_CborHex deployAllParams
-                , tccsScriptValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapScriptValidator_Pre_CborHex deployAllParams
-                , tccsCampaignPolicy_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapCampaignPolicy_Pre_CborHex deployAllParams
-                , tccsCampaignValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapCampaignValidator_Pre_CborHex deployAllParams
-                , tccsCampaignFundsPolicyID_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapCampaignFundsPolicyID_Pre_CborHex deployAllParams
-                , tccsCampaignFundsValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.dapCampaignFundsValidator_Pre_CborHex deployAllParams
+                { tccsProtocolPolicyID_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpProtocolPolicyID_Pre_CborHex deployAllParams
+                , tccsProtocolValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpProtocolValidator_Pre_CborHex deployAllParams
+                , tccsScriptPolicyID_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpScriptPolicyID_Pre_CborHex deployAllParams
+                , tccsScriptValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpScriptValidator_Pre_CborHex deployAllParams
+                , tccsCampaignPolicy_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpCampaignPolicy_Pre_CborHex deployAllParams
+                , tccsCampaignValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpCampaignValidator_Pre_CborHex deployAllParams
+                , tccsCampaignFundsPolicyID_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpCampaignFundsPolicyID_Pre_CborHex deployAllParams
+                , tccsCampaignFundsValidator_Pre = DeployHelpers.readCompiledCodeFromJsonString $ Deploy.fdpCampaignFundsValidator_Pre_CborHex deployAllParams
                 }
     return testCompiledCodeScripts
 

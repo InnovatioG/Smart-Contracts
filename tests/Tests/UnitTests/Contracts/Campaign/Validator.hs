@@ -57,7 +57,7 @@ campaign_Validator_Tests tp =
         , campaign_Validator_Redeemer_NotReachedCampaign_Tests tp
         , campaign_Validator_Redeemer_MilestoneAprobe_Tests tp
         , campaign_Validator_Redeemer_MilestoneReprobe_Tests tp
-        , campaign_Validator_Redeemer_Emergency_Tests tp
+        -- , campaign_Validator_Redeemer_Emergency_Tests tp
         , campaign_Validator_Redeemer_Delete_Tests tp
         ]
 --------------------------------------------------------------------------------

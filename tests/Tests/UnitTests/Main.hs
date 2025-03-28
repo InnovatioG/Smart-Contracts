@@ -26,11 +26,28 @@ import           Contracts.Protocol.MintingPolicy
 import           Contracts.Protocol.Validator
 import           TestUtils.Helpers
 import           TestUtils.HelpersINNOVATIO
+import qualified System.IO as SystemIO
+import qualified System.Directory as SystemDirectory
 
 --------------------------------------------------------------------------------3
 
 main :: IO ()
 main = do
+    putStrLn "---------------"
+    -- Prompt user to delete previous test contracts
+    putStr "Do you want to delete previous exported test smart contracts? (yes/no): "
+    SystemIO.hFlush SystemIO.stdout  -- Ensure the prompt is displayed before user input
+    response <- getLine
+    let exportFolder = "export/test/"
+    case response of
+        "yes" -> do
+            exists <- SystemDirectory.doesDirectoryExist exportFolder
+            if exists 
+                then do
+                    SystemDirectory.removeDirectoryRecursive exportFolder
+                    putStrLn "Previous test contracts deleted."
+                else putStrLn "No previous test contracts found."
+        _ -> putStrLn "Keeping previous test contracts."
     putStrLn "---------------"
     tp <- getTestParams "export/test/deploy.json"
     numTests <- getNumTestCases 100

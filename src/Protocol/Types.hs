@@ -41,6 +41,15 @@ import qualified Helpers.OnChain as OnChainHelpers
 --------------------------------------------------------------------------------2
 -- Modulo
 --------------------------------------------------------------------------------2
+-- Modulo
+--------------------------------------------------------------------------------2
+
+-- Any change in the logic, datum or redeemer must change the version of the protocolVersion
+protocolVersion :: Integer
+protocolVersion = 1
+
+ownVersion :: Integer
+ownVersion = T.mkVersionWithDependency [] protocolVersion
 
 --------------------------------------------------------------------------------2
 -- Params
@@ -184,7 +193,7 @@ mkProtocol_DatumType
     minADA =
         let !adminsOrdered = sort admins
         in ProtocolDatumType
-                { pdProtocolVersion = T.protocolVersion
+                { pdProtocolVersion = ownVersion
                 , pdAdmins = adminsOrdered
                 , pdTokenAdminPolicy_CS = tokenAdminPolicy_CS
                 , pdMinADA = minADA

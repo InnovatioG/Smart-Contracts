@@ -46,10 +46,17 @@ campaignFundsID_TN_basename = "CampaignFundsID"
 
 --------------------------------------------------------------------------------2
 
-protocolVersion :: Integer
-protocolVersion = 1
+-- protocolVersion :: Integer
+-- protocolVersion = 1
 
-campaignVersion :: Integer
-campaignVersion = 1
+-- campaignVersion :: Integer
+-- campaignVersion = 1
+
+--------------------------------------------------------------------------------2
+
+-- | Helper function to create a version number with a dependency
+mkVersionWithDependency :: [Integer] -> Integer -> Integer
+mkVersionWithDependency xs ownVersion
+  = foldr (\x acc -> acc * 100 + x) ownVersion xs
 
 --------------------------------------------------------------------------------2

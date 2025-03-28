@@ -204,6 +204,7 @@ library
     Campaign.Types
     Constants
     Deploy
+    OffChainHelpers
     Others.PolicyFT
     Others.PolicyNFT
     Protocol.Helpers
@@ -213,7 +214,7 @@ library
     Script.Types
     Types
 ---------------------------------
-test-suite InnovatioFounderUnitTests
+test-suite UnitTests
   import:
     common-all-deps-and-languange,  common-deps-test-suites, plutus-tx-config, warnings-config
   type:           exitcode-stdio-1.0

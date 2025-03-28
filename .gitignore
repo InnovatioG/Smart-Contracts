@@ -34,3 +34,6 @@ shell-1.1.0.nix
 
 
 **/export/
+
+files-contents.txt
+files-contents-config.*.json

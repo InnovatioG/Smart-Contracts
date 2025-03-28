@@ -174,12 +174,13 @@ validateManyInputsSameOutputs !vp =
 {-# INLINEABLE validateInputsOneOutput #-}
 validateInputsOneOutput :: ValidationParams -> Bool
 validateInputsOneOutput !vp =
-    case getOutput_CampaignFunds_DatumAndValue vp of
-        Nothing -> traceError "Expected CampaignFunds output"
-        Just (!outDatum, !outValue) ->
-            if vInputsLength vp == 1
-                then validateSingleInputRedeemer vp outDatum outValue
-                else validateMultipleInputsRedeemer vp outDatum outValue
+    case getOutputCampaignFundsDatums vp of
+        [(output, outDatum)] ->
+            let outValue = LedgerApiV2.txOutValue output
+            in if vInputsLength vp == 1
+                  then validateSingleInputRedeemer vp outDatum outValue
+                  else validateMultipleInputsRedeemer vp outDatum outValue
+        _ -> traceError "Expected exactly one CampaignFunds output"
 
 {-# INLINEABLE validateSingleInputRedeemer #-}
 validateSingleInputRedeemer :: ValidationParams -> T.CampaignFundsDatumType -> Ledger.Value -> Bool
@@ -345,7 +346,7 @@ validateSell !vp !outDatum !outValue (T.ValidatorRedeemerSellType !amount_Campai
 {-# INLINEABLE validateSellDatumUpdate #-}
 validateSellDatumUpdate :: ValidationParams -> T.CampaignFundsDatumType -> Integer -> Integer -> Bool
 validateSellDatumUpdate !vp !outDatum !amount_CampaignToken !amount_ADA =
-    let 
+    let
         !campaignFundsDatum_Out_Control = CampaignHelpers.mkUpdated_CampaignFunds_Datum_With_SoldTokens
             (vDatum vp)
             amount_CampaignToken
@@ -390,7 +391,7 @@ validateGetBack !vp !outDatum !outValue (T.ValidatorRedeemerGetBackType !amount_
             (validateGetBackDatumUpdate vp outDatum amount_CampaignToken amount_ADA)
         && traceIfFalse "not isCorrect_Output_CampaignFunds_Datum_Value_Changed_With_GetBack"
             (validateGetBackValueChange vp outValue amount_CampaignToken amount_ADA)
-        where 
+        where
             !amount_ADA = amount_CampaignToken * CampaignT.cdCampaignToken_PriceADA (vCampaignDatum vp)
 
 {-# INLINEABLE validateGetBackDatumUpdate #-}
@@ -463,7 +464,7 @@ validateCollectCampaignRedeemer !vp =
             CampaignT.getCampaign_DatumType of
                 [x] -> x
                 _   -> traceError "Expected one Campaign input"
-                
+
     in  case OnChainHelpers.getRedeemerForConsumeInput ((\(txOutRef, _, _) -> txOutRef) campaignInput) (vInfo vp) of
             Nothing -> traceError "Expected Campaign input with redeemer"
             Just r -> case LedgerApiV2.fromBuiltinData @CampaignT.ValidatorRedeemer $ LedgerApiV2.getRedeemer r of
@@ -481,9 +482,9 @@ validateCollectDatumUpdate !vp !outDatum !amount_ADA =
 {-# INLINEABLE validateCollectValueChange #-}
 validateCollectValueChange :: ValidationParams -> Ledger.Value -> Integer -> Bool
 validateCollectValueChange !vp !outValue !amount_ADA =
-    let !campaignToken_AC = getCampaignToken_AC vp
-        !valueOf_CampaignToken = LedgerValue.assetClassValue campaignToken_AC amount_ADA
-        !valueFor_Control = vInputValue vp <> negate valueOf_CampaignToken
+    let
+        valueOf_ADA = LedgerADA.lovelaceValueOf amount_ADA
+        valueFor_Control = vInputValue vp <> negate valueOf_ADA
     in outValue `OnChainHelpers.isEqValue` valueFor_Control
 
 --------------------------------------------------------------------------------
@@ -592,7 +593,7 @@ validateMerge !vp !outDatum !outValue =
     let !inputTxOutsAndDatums = getInputCampaignFundsDatums vp
         !inputDatums = map snd inputTxOutsAndDatums
         !inputValues = map (LedgerApiV2.txOutValue . fst) inputTxOutsAndDatums
-    in traceIfFalse "not isBurningCampaignFundsIDs"
+    in traceIfFalse "not isBurningCampaignFundsIDs2"
         ( OnChainHelpers.isToken_Burning_With_CS (vCampaignFundsPolicyID_CS vp) (vInfo vp))
         && traceIfFalse "not isCorrect_Output_CampaignFunds_Datum_SubTotal_Added"
             (validateMergeDatumUpdate outDatum inputDatums)
@@ -619,12 +620,13 @@ validateMergeDatumUpdate !outDatum !inputDatums =
 {-# INLINEABLE validateMergeValueChange #-}
 validateMergeValueChange :: ValidationParams -> Ledger.Value -> [Ledger.Value] -> Bool
 validateMergeValueChange !vp !outValue !inputValues =
-    let !totalValue = OnChainHelpers.sumValues inputValues
-        !valueFor_Burning = OnChainHelpers.getValueOfCurrencySymbol totalValue (vCampaignFundsPolicyID_CS vp)
-        !valueFor_Remaining = LedgerValue.assetClassValue (vCampaignFundsID_AC vp) 1
-        !valueFor_Control = totalValue <> valueFor_Remaining <> valueFor_Burning
-    in outValue `OnChainHelpers.isEqValue` valueFor_Control
-
+    let
+        !totalValue = OnChainHelpers.sumValues inputValues
+        !mintingValue = LedgerApiV2.txInfoMint (vInfo vp)
+        !burningID = OnChainHelpers.getValueOfCurrencySymbol mintingValue (vCampaignFundsPolicyID_CS vp)
+        !valueFor_Control = totalValue <> burningID
+    in
+        outValue `OnChainHelpers.isEqValue` valueFor_Control
 
 --------------------------------------------------------------------------------
 -- Delete Validation Functions
@@ -660,10 +662,10 @@ validateDelete !vp =
     --TODO: agregar control, si la campaña está en estado alguno que sea activo, solo se borra si tiene zero subtotals y minADA only
     -- pero si esta todo terminado y es para limpiar, deberia permitir, con min ada only, pero sin imporatrn si collected o sold son distintos de zero
     ------------------
-    traceIfFalse "not isBurningCampaignFundsIDs" ( OnChainHelpers.isToken_Burning_With_CS (vCampaignFundsPolicyID_CS vp) (vInfo vp))
+    traceIfFalse "not isBurningCampaignFundsIDs3" ( OnChainHelpers.isToken_Burning_With_CS (vCampaignFundsPolicyID_CS vp) (vInfo vp))
         && traceIfFalse "not isZeroSubtotals" (isZeroSubtotals $ vDatum vp)
         && traceIfFalse "not isMinADAAndIDOnlyValue" (vInputValue vp `OnChainHelpers.isEqValue` (LedgerAda.lovelaceValueOf (T.cfdMinADA $ vDatum vp) <> LedgerValue.assetClassValue (vCampaignFundsID_AC vp) 1))
-    where 
+    where
         isZeroSubtotals :: T.CampaignFundsDatumType -> Bool
         isZeroSubtotals !datum =
             T.cfdSubtotal_Avalaible_CampaignToken datum == 0
@@ -712,7 +714,7 @@ getProtocol_Datum !vp =
             ProtocolT.getProtocol_DatumType
     in case protocolDatums of
         [(_,x)] -> Just x
-        _   -> Nothing
+        _       -> Nothing
 
 {-# INLINEABLE getCampaign_Datum #-}
 getCampaign_Datum :: LedgerContextsV2.ScriptContext -> LedgerValue.AssetClass -> Bool -> CampaignT.CampaignDatumType
@@ -890,8 +892,6 @@ mkPolicyID (T.PolicyParams !campaignPolicy_CS !campaignFundsValidator_Hash) !red
                         && traceIfFalse "not isCorrect_Output_CampaignFunds_Datum_Value" isCorrect_Output_CampaignFunds_Datum_Value
                     where
                         ------------------
-
-                        ------------------
                         !outputs_txOuts =
                             [ txOut | txOut <- LedgerApiV2.txInfoOutputs info, OnChainHelpers.isScriptAddress (LedgerApiV2.txOutAddress txOut)
                             ]
@@ -936,16 +936,15 @@ mkPolicyID (T.PolicyParams !campaignPolicy_CS !campaignFundsValidator_Hash) !red
                         !valueFor_CampaignFundsDatum_Out_Control = valueFor_Mint_CampaignFundsID <> value_MinADA_For_CampaignFundsDatum_Out
                         ------------------
                         !campaignFundsDatum_Out_Control =
-                            T.CampaignFundsDatumType
-                                { T.cfdIndex = campaignFunds_Index
-                                , T.cfdCampaignPolicy_CS = campaignPolicy_CS
-                                , T.cfdCampaignFundsPolicyID_CS = campaignFundsPolicyID_CS
-                                , T.cfdSubtotal_Avalaible_CampaignToken = 0
-                                , T.cfdSubtotal_Sold_CampaignToken = 0
-                                , T.cfdSubtotal_Avalaible_ADA = 0
-                                , T.cfdSubtotal_Collected_ADA = 0
-                                , T.cfdMinADA = minADA_For_CampaignFundsDatum_Out
-                                }
+                            T.mkCampaignFunds_DatumType
+                                campaignFunds_Index
+                                campaignPolicy_CS
+                                campaignFundsPolicyID_CS
+                                0
+                                0
+                                0
+                                0
+                                minADA_For_CampaignFundsDatum_Out
                         ------------------
                         isCampaignValidatorRedeemerFundsAdd :: CampaignT.ValidatorRedeemer -> Bool
                         isCampaignValidatorRedeemerFundsAdd redemeerToCheck = case redemeerToCheck of
@@ -989,7 +988,7 @@ mkPolicyID (T.PolicyParams !campaignPolicy_CS !campaignFundsValidator_Hash) !red
                     -- 3 - En el caso de Delete: que los CampaignFundsDatum tengan zero subtotales
                     -- no hay restricciones temporales
                     ------------------
-                    traceIfFalse "not isBurningCampaignFundsIDs" isBurningCampaignFundsIDs
+                    traceIfFalse "not isBurningCampaignFundsIDs4" isBurningCampaignFundsIDs
                         && traceIfFalse "not isCorrect_Redeemer_CampaignDatum" (isCorrect_Redeemer_CampaignDatum isCampaignValidatorRedeemerFundsMergeOrDelete )
                         -- && traceIfFalse "not isZeroAssets" isZeroAssets
                     where
@@ -1022,7 +1021,7 @@ mkPolicyID (T.PolicyParams !campaignPolicy_CS !campaignFundsValidator_Hash) !red
                         isCampaignValidatorRedeemerFundsMergeOrDelete :: CampaignT.ValidatorRedeemer -> Bool
                         isCampaignValidatorRedeemerFundsMergeOrDelete redemeerToCheck = case redemeerToCheck of
                             CampaignT.ValidatorRedeemerFundsDelete _ -> True
-                            CampaignT.ValidatorRedeemerFundsMerge _ -> True
+                            CampaignT.ValidatorRedeemerFundsMerge _  -> True
                             _                                        -> False
                         ------------------
                         -- isZeroAssets :: Bool
