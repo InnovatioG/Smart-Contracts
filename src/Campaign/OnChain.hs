@@ -923,11 +923,11 @@ mkPolicy (T.PolicyParams !protocolPolicyID_CS !campaignPolicy_TxOutRef !campaign
                                 -- Check if campaignToken_PriceADA is greater than zero
                                 validCampaignToken_PriceADA = campaignToken_PriceADA > 0
                                 -- Check if requestedMaxADA is greater than requestedMinADA, and requestedMinADA is greater than zero
-                                validRequestedMinMaxADA = requestedMinADA > 0 && requestedMaxADA > requestedMinADA
+                                validRequestedMinMaxADA = requestedMinADA > 0 && requestedMaxADA >= requestedMinADA
                                 -- Check if requestedMaxADA and requestedMinADA are divisible by campaignToken_PriceADA
                                 divisibleMax = requestedMaxADA `modulo` campaignToken_PriceADA == 0
-                                divisibleMin = requestedMinADA `modulo` campaignToken_PriceADA == 0
-                                validRequestedPriceDivisibility = divisibleMax && divisibleMin
+                                -- divisibleMin = requestedMinADA `modulo` campaignToken_PriceADA == 0
+                                validRequestedPriceDivisibility = divisibleMax 
                                 -- Check valid milestones
                                 validateMilestones =
                                     let
@@ -948,7 +948,7 @@ mkPolicy (T.PolicyParams !protocolPolicyID_CS !campaignPolicy_TxOutRef !campaign
                                     && traceIfFalse "not validCampaignToken_CS" validCampaignToken_CS
                                     && traceIfFalse "not validCampaignToken_TN" validCampaignToken_TN
                                     && traceIfFalse "not validCampaignToken_PriceADA" validCampaignToken_PriceADA
-                                    && traceIfFalse "not validRequestedMinMaxADA" validRequestedMinMaxADA
+                                    && traceIfFalse "not validRequestedMinAndMaxADA" validRequestedMinMaxADA
                                     && traceIfFalse "not validRequestedPriceDivisibility" validRequestedPriceDivisibility
                                     && campaignDatum_Out `OnChainHelpers.isUnsafeEqDatums` campaignDatum_Out_Control
 
