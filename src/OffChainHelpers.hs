@@ -15,18 +15,19 @@ module OffChainHelpers where
 -- External Imports
 --------------------------------------------------------------------------------2
 
-import qualified Plutus.V2.Ledger.Api             as LedgerApiV2
-import           PlutusTx.Prelude                 hiding (unless)
-import qualified Prelude                          as P
+import qualified Plutus.V2.Ledger.Api as LedgerApiV2
+import           PlutusTx.Prelude     hiding (unless)
+import qualified Prelude              as P
 
 --------------------------------------------------------------------------------2
 -- Internal Imports
 --------------------------------------------------------------------------------2
 
-import qualified Helpers.OffChain          as OffChainHelpers
-import qualified Campaign.Types      as CampaignT
-import qualified Protocol.Types                   as ProtocolT
-import qualified Script.Types                   as ScriptT
+import qualified Campaign.Funds.Types as CampaignFundT
+import qualified Campaign.Types       as CampaignT
+import qualified Helpers.OffChain     as OffChainHelpers
+import qualified Protocol.Types       as ProtocolT
+import qualified Script.Types         as ScriptT
 
 --------------------------------------------------------------------------------2
 -- Module
@@ -140,3 +141,35 @@ readStringDecodedAsCampaignValidatorRedeemer encoded = do
 
 
 --------------------------------------------------------------------------------
+
+
+
+readStringDecodedAsCampaignFundValidatorDatum :: P.String -> P.IO CampaignFundT.ValidatorDatum
+readStringDecodedAsCampaignFundValidatorDatum encoded = do
+    !raw <- OffChainHelpers.readStringDecodedAsDatum encoded
+    P.putStrLn $ "Raw: " ++ P.show raw
+    let !result = LedgerApiV2.unsafeFromBuiltinData @CampaignFundT.ValidatorDatum (LedgerApiV2.getDatum raw)
+    P.putStrLn $ "Result: " ++ P.show result
+    return result
+
+-- readStringDecodedAsCampaignFundPolicyRedeemer "{\"getRedeemer\":\"d8799fd87980ff\"}"
+-- readStringDecodedAsCampaignFundPolicyRedeemer "{\"getRedeemer\":\"d8799fd87980ff\"}"
+
+readStringDecodedAsCampaignFundPolicyRedeemer :: P.String -> P.IO CampaignFundT.PolicyRedeemer
+readStringDecodedAsCampaignFundPolicyRedeemer encoded = do
+    !raw <- OffChainHelpers.readStringDecodedAsRedeemer encoded
+    P.putStrLn $ "Raw: " ++ P.show raw
+    let !result = LedgerApiV2.unsafeFromBuiltinData @CampaignFundT.PolicyRedeemer (LedgerApiV2.getRedeemer raw)
+    P.putStrLn $ "Result: " ++ P.show result
+    return result
+
+-- readStringDecodedAsCampaignFundValidatorRedeemer "{\"getRedeemer\":\"d8799fd87980ff\"}"
+
+readStringDecodedAsCampaignFundValidatorRedeemer :: P.String -> P.IO CampaignFundT.ValidatorRedeemer
+readStringDecodedAsCampaignFundValidatorRedeemer encoded = do
+    !raw <- OffChainHelpers.readStringDecodedAsRedeemer encoded
+    P.putStrLn $ "Raw: " ++ P.show raw
+    let !result = LedgerApiV2.unsafeFromBuiltinData @CampaignFundT.ValidatorRedeemer (LedgerApiV2.getRedeemer raw)
+    P.putStrLn $ "Result: " ++ P.show result
+    return result
+

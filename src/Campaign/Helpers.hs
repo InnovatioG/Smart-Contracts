@@ -188,7 +188,7 @@ mkUpdated_CampaignFunds_Datum_With_SoldTokens !campaignFundsDatum_In  !amount_Ca
     campaignFundsDatum_In {
         CampaignFundsT.cfdSubtotal_Sold_CampaignToken = CampaignFundsT.cfdSubtotal_Sold_CampaignToken campaignFundsDatum_In + amount_CampaignToken,
         CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken = CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken campaignFundsDatum_In - amount_CampaignToken ,
-        CampaignFundsT.cfdSubtotal_Avalaible_ADA = CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken campaignFundsDatum_In + amount_ADA
+        CampaignFundsT.cfdSubtotal_Avalaible_ADA = CampaignFundsT.cfdSubtotal_Avalaible_ADA campaignFundsDatum_In + amount_ADA
         }
 
 --------------------------------------------------------------------------------
@@ -199,7 +199,7 @@ mkUpdated_CampaignFunds_Datum_With_GetBackTokens !campaignFundsDatum_In !amount_
     campaignFundsDatum_In {
         CampaignFundsT.cfdSubtotal_Sold_CampaignToken = CampaignFundsT.cfdSubtotal_Sold_CampaignToken campaignFundsDatum_In - amount_CampaignToken,
         CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken = CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken campaignFundsDatum_In + amount_CampaignToken ,
-        CampaignFundsT.cfdSubtotal_Avalaible_ADA = CampaignFundsT.cfdSubtotal_Avalaible_CampaignToken campaignFundsDatum_In - amount_ADA
+        CampaignFundsT.cfdSubtotal_Avalaible_ADA = CampaignFundsT.cfdSubtotal_Avalaible_ADA campaignFundsDatum_In - amount_ADA
         }
 
 --------------------------------------------------------------------------------
