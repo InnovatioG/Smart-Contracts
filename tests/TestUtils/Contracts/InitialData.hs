@@ -105,10 +105,9 @@ beginDate = 1
 deadlineDate :: LedgerApiV2.POSIXTime
 deadlineDate = LedgerApiV2.POSIXTime ((10 * 30 * 24 * 60 * 60 * 1000) :: Integer)
 
-
 milestones :: CampaignT.CampaignMilestones
 milestones = CampaignT.CampaignMilestones {
-        CampaignT.cmPerncentage           = 100
+        CampaignT.cmPercentage           = 100
         , CampaignT.cmStatus                =CampaignT.MsCreated
         }
 
