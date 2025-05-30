@@ -44,14 +44,14 @@ protocol_Create_TxContext tp =
 --------------------------------------------------------------------------------
 
 protocol_DatumUpdate_TxContext :: TestParams -> [T.WalletPaymentPKH] -> LedgerApiV2.CurrencySymbol -> LedgerApiV2.ScriptContext
-protocol_DatumUpdate_TxContext tp admins tokenAdminPolicy_CS =
+protocol_DatumUpdate_TxContext tp admins tokenAdminPolicy_CS' =
     let
         input_Protocol_UTxO = protocol_UTxO_MockData tp
         input_Protocol_Datum = ProtocolT.getProtocol_DatumType_From_UTxO input_Protocol_UTxO
         -----------------
         output_Protocol_Datum = input_Protocol_Datum {
             ProtocolT.pdAdmins = admins,
-            ProtocolT.pdTokenAdminPolicy_CS = tokenAdminPolicy_CS
+            ProtocolT.pdTokenAdminPolicy_CS = tokenAdminPolicy_CS'
         }
         output_Protocol_UTxO = input_Protocol_UTxO
             { LedgerApiV2.txOutDatum =
