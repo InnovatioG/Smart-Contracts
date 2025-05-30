@@ -252,6 +252,8 @@ executable deploy
 
   main-is:        deploy.hs
   hs-source-dirs: app
-  build-depends:  innovatio-founder
+  build-depends:   
+    cardano-helpers,
+    innovatio-founder 
 
 ---------------------------------
