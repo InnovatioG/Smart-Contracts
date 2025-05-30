@@ -12,34 +12,26 @@ module TestUtils.HelpersINNOVATIO where
 --------------------------------------------------------------------------------
 
 -- Non-IOG imports
-import           Prelude                        as P
-import qualified Deploy              
-import qualified System.Directory               as SystemDirectory
+import qualified Deploy
+import           Prelude                         as P
+import qualified System.Directory                as SystemDirectory
 
 -- IOG imports
-import qualified Ledger
-import qualified Ledger.Crypto                  as LedgerCrypo
-import qualified Plutus.V2.Ledger.Api           as LedgerApiV2
+import qualified Plutus.V2.Ledger.Api            as LedgerApiV2
 import qualified PlutusTx
-import qualified PlutusTx.Builtins              as TxBuiltins
-import           PlutusTx.Prelude               as Ptx hiding (($), (*), (+), (++), (-), (.), (<>), (==))
+import qualified PlutusTx.Builtins               as TxBuiltins
 
 -- Project imports
 
-import qualified Helpers.Deploy          as DeployHelpers
-import qualified Helpers.OffChain       as OffChainHelpers
-import qualified Helpers.OnChain        as OnChainHelpers
-import qualified Constants             as T
-import qualified Campaign.Funds.Types    as CampaignFundsT
-import qualified Campaign.Types            as CampaignT
-import qualified Protocol.Types        as ProtocolT
-import qualified Script.Types          as ScriptT
-import qualified Types                 as T
-import           TestUtils.Constants
-import           TestUtils.Helpers
+import qualified Campaign.Funds.Types            as CampaignFundsT
+import qualified Campaign.Types                  as CampaignT
+import qualified Helpers.Deploy                  as DeployHelpers
+import qualified Helpers.OffChain                as OffChainHelpers
+import qualified Protocol.Types                  as ProtocolT
+import qualified Script.Types                    as ScriptT
+import           TestUtils.Contracts.InitialData
 import           TestUtils.TestContext.Evaluate
 import           TestUtils.TypesINNOVATIO
-import TestUtils.Contracts.InitialData
 
 --------------------------------------------------------------------------------
 

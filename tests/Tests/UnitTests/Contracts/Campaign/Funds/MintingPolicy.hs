@@ -21,19 +21,12 @@ import qualified Test.Tasty                                as Tasty
 import qualified Test.Tasty.HUnit                          as Tasty
 
 -- IOG imports
-import qualified Plutus.V2.Ledger.Api                      as LedgerApiV2
 import           PlutusTx.Prelude
 
 -- Project imports
-import qualified Helpers.OffChain                   as OffChainHelpers (addressValidator)
-import qualified Campaign.Funds.Types               as CampaignFundsT
-import qualified Campaign.Types                       as CampaignT
-import           TestUtils.Contracts.InitialData
 import           TestUtils.Contracts.TxContext.CampaignFunds
 import           TestUtils.HelpersINNOVATIO
 import           TestUtils.TestContext.Asserts
-import           TestUtils.TestContext.Helpers
-import           TestUtils.Types
 import           TestUtils.TypesINNOVATIO
 
 --------------------------------------------------------------------------------

@@ -13,24 +13,20 @@ module TestUtils.Contracts.TxContext.CampaignFunds where
 import           Prelude                         as P hiding (negate, (<>))
 
 -- IOG imports
+import qualified Ledger.Ada                      as LedgerAda
 import qualified Plutus.V2.Ledger.Api            as LedgerApiV2
-import           PlutusTx.Prelude                (head, negate, (<>))
-import qualified PlutusTx.Prelude                as Ptx
-import qualified PlutusTx.Ratio                  as TxRatio
+import           PlutusTx.Prelude                (negate, (<>))
 
 -- Project imports
 import qualified Campaign.Funds.Types            as CampaignFundsT
 import qualified Campaign.Helpers                as CampaignHelpers
 import qualified Campaign.Types                  as CampaignT
 import qualified Helpers.OnChain                 as OnChainHelpers
-import qualified Ledger.Ada                      as LedgerAda
 import           TestUtils.Contracts.InitialData
 import           TestUtils.Helpers
-import           TestUtils.HelpersINNOVATIO
 import           TestUtils.TestContext.Helpers
 import           TestUtils.Types
 import           TestUtils.TypesINNOVATIO
-import qualified Types                           as T
 
 --------------------------------------------------------------------------------
 -- CampaignFunds Contract

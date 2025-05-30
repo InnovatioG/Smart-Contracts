@@ -11,13 +11,12 @@ import qualified Test.Tasty                             as Tasty
 import qualified Test.Tasty.HUnit                       as Tasty
 
 -- IOG imports
+import qualified Ledger.Ada                             as LedgerAda
 import qualified Plutus.V2.Ledger.Api                   as LedgerApiV2
 import           PlutusTx.Prelude
 
 -- Project imports
 import qualified Constants                              as T
-import qualified Helpers.OffChain                       as OffChainHelpers
-import qualified Ledger.Ada                             as LedgerAda
 import qualified Protocol.Types                         as ProtocolT
 import           TestUtils.Contracts.InitialData
 import           TestUtils.Contracts.TxContext.Protocol
@@ -101,7 +100,7 @@ protocol_Policy_Redeemer_MintID_Tests tp =
                         -- Testing incorrect output value (wrong minADA)
                         , Tasty.testCase "Incorrect min ADA in output value must fail" $ do
                             let
-                                wrongMinAda = toAlter_minAda -- Different from the expected minADA 
+                                wrongMinAda = toAlter_minAda -- Different from the expected minADA
                                 invalidValue = LedgerApiV2.singleton (tpProtocolPolicyID_CS tp) T.protocolID_TN 1
                                              <> LedgerAda.lovelaceValueOf wrongMinAda
                                 invalidProtocolUTxO = (protocol_UTxO_MockData tp)

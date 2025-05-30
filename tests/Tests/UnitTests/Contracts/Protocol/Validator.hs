@@ -20,15 +20,12 @@ import           Test.QuickCheck.Instances.ByteString   ()
 import qualified Test.Tasty                             as Tasty
 import qualified Test.Tasty.HUnit                       as Tasty
 -- IOG imports
-import qualified Ledger
 import qualified Ledger.Ada                             as LedgerAda
-import qualified Ledger.Address                         as LedgerAddress
 import qualified Plutus.V2.Ledger.Api                   as LedgerApiV2
 import           PlutusTx.Prelude
 
 -- Project imports
-import qualified Helpers.OffChain                as OffChainHelpers
-import qualified Constants                     as T
+
 import qualified Protocol.Types                as ProtocolT
 import           TestUtils.Contracts.InitialData
 import           TestUtils.Contracts.TxContext.Protocol

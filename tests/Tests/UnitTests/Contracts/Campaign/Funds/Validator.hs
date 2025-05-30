@@ -17,30 +17,17 @@ module Contracts.Campaign.Funds.Validator where
 --------------------------------------------------------------------------------4
 
 -- Non-IOG imports
-import qualified GHC.Stack as GHC
 import qualified Test.Tasty as Tasty
 import qualified Test.Tasty.HUnit as Tasty
 import Prelude as P
 
 -- IOG imports
-import qualified Ledger
-import qualified Ledger.Ada as LedgerAda
-import qualified Plutus.V2.Ledger.Api as LedgerApiV2
-import PlutusTx.Prelude (divide)
 
 -- Project imports
-
-import qualified Constants as T
-import qualified Campaign.Helpers as CampaignHelpers
-import qualified Campaign.Funds.Types as CampaignFundsT
-import qualified Campaign.Types as CampaignT
-import qualified Types as T
 import TestUtils.Contracts.InitialData
 import TestUtils.Contracts.TxContext.CampaignFunds
 import TestUtils.HelpersINNOVATIO
 import TestUtils.TestContext.Asserts
-import TestUtils.TestContext.Helpers
-import TestUtils.Types
 import TestUtils.TypesINNOVATIO
 
 --------------------------------------------------------------------------------

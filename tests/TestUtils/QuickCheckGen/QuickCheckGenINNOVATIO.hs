@@ -8,29 +8,14 @@ module TestUtils.QuickCheckGen.QuickCheckGenINNOVATIO where
 --------------------------------------------------------------------------------
 
 -- Non-IOG imports
-
-import qualified Control.Monad                         as ControlMonad
-import qualified Debug.Trace                           as DebugTrace
 import           Prelude                               as P hiding ((<>))
 import qualified Test.QuickCheck                       as QC
 
 -- IOG imports
-import qualified Plutus.V2.Ledger.Api                  as LedgerApiV2
-import           PlutusTx.Prelude                      (find, nub, remainder, sort)
 
 -- Project imports
-
-import qualified Data.List                             as DataList
-import qualified Data.Maybe                            as DataMaybe
-import qualified Ledger.Value                          as LedgerValue
-import qualified Campaign.Funds.Types           as CampaignFundsT
-import qualified Campaign.Types                   as CampaignT
 import qualified Protocol.Types               as ProtocolT
-import qualified Types                        as T
-import           TestUtils.Contracts.InitialData
-import           TestUtils.Helpers
-import           TestUtils.QuickCheckGen.QuickCheckGen
-import           TestUtils.TypesINNOVATIO
+
 
 
 ----------------------------------------------------------------------------------------
