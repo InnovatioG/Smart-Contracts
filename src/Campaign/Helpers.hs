@@ -83,33 +83,9 @@ mkUpdated_Campaign_Datum_With_NewStatusNotReached !campaignDatum_In !fundedADA =
 
 --------------------------------------------------------------------------------
 
--- {-# INLINEABLE mkUpdated_Campaign_Datum_With_MilestoneAprobed #-}
--- mkUpdated_Campaign_Datum_With_MilestoneAprobed :: T.CampaignDatumType -> Integer -> T.CampaignDatumType
--- mkUpdated_Campaign_Datum_With_MilestoneAprobed !campaignDatum_In milestoneIndex =
---     let
---         indices = OnChainHelpers.enumFromTo 0 (length (T.cdMilestones campaignDatum_In) - 1)
---         updatedMilestones = zipWith (curry updateMilestone) indices (T.cdMilestones campaignDatum_In)
---         updateMilestone (i, milestone) = if i == milestoneIndex
---                                          then milestone { T.cmStatus = T.MsSuccess }
---                                          else milestone
---     in campaignDatum_In { T.cdMilestones = updatedMilestones }
-
--- --------------------------------------------------------------------------------2
-
--- {-# INLINEABLE mkUpdated_Campaign_Datum_With_MilestoneReprobed #-}
--- mkUpdated_Campaign_Datum_With_MilestoneReprobed :: T.CampaignDatumType -> Integer -> T.CampaignDatumType
--- mkUpdated_Campaign_Datum_With_MilestoneReprobed !campaignDatum_In milestoneIndex =
---     let
---         indices = OnChainHelpers.enumFromTo 0 (length (T.cdMilestones campaignDatum_In) - 1)
---         updatedMilestones = zipWith (curry updateMilestone) indices (T.cdMilestones campaignDatum_In)
---         updateMilestone (i, milestone) = if i == milestoneIndex
---                                          then milestone { T.cmStatus = T.MsFailed }
---                                          else milestone
---     in campaignDatum_In { T.cdMilestones = updatedMilestones, T.cdStatus = T.CsFailedMilestone }
-
-{-# INLINEABLE mkUpdated_Campaign_Datum_With_MilestoneAprobed #-}
-mkUpdated_Campaign_Datum_With_MilestoneAprobed :: T.CampaignDatumType -> Integer -> T.CampaignDatumType
-mkUpdated_Campaign_Datum_With_MilestoneAprobed !campaignDatum_In milestoneIndex =
+{-# INLINEABLE mkUpdated_Campaign_Datum_With_MilestoneApproved #-}
+mkUpdated_Campaign_Datum_With_MilestoneApproved :: T.CampaignDatumType -> Integer -> T.CampaignDatumType
+mkUpdated_Campaign_Datum_With_MilestoneApproved !campaignDatum_In milestoneIndex =
     let
         updatedMilestones = updateMilestones 0 (T.cdMilestones campaignDatum_In)
         
@@ -122,9 +98,9 @@ mkUpdated_Campaign_Datum_With_MilestoneAprobed !campaignDatum_In milestoneIndex 
 
 --------------------------------------------------------------------------------
 
-{-# INLINEABLE mkUpdated_Campaign_Datum_With_MilestoneReprobed #-}
-mkUpdated_Campaign_Datum_With_MilestoneReprobed :: T.CampaignDatumType -> Integer -> T.CampaignDatumType
-mkUpdated_Campaign_Datum_With_MilestoneReprobed !campaignDatum_In milestoneIndex =
+{-# INLINEABLE mkUpdated_Campaign_Datum_With_MilestoneFailed #-}
+mkUpdated_Campaign_Datum_With_MilestoneFailed :: T.CampaignDatumType -> Integer -> T.CampaignDatumType
+mkUpdated_Campaign_Datum_With_MilestoneFailed !campaignDatum_In milestoneIndex =
     let
         updatedMilestones = updateMilestones 0 (T.cdMilestones campaignDatum_In)
         

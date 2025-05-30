@@ -46,7 +46,7 @@ import qualified Helpers.OnChain as OnChainHelpers
 
 -- Any change in the logic, datum or redeemer must change the version of the protocolVersion
 protocolVersion :: Integer
-protocolVersion = 1
+protocolVersion = 2
 
 ownVersion :: Integer
 ownVersion = T.mkVersionWithDependency [] protocolVersion

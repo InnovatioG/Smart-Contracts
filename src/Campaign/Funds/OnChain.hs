@@ -41,6 +41,7 @@ import qualified Helpers.OnChain           as OnChainHelpers
 import           Prelude                   (Show)
 import qualified Protocol.Types            as ProtocolT
 import qualified Types                     as T
+import qualified PlutusTx.Ratio as TxRatio
 
 ----------------------------------------------------------------------------2
 -- Modulo
@@ -392,7 +393,24 @@ validateGetBack !vp !outDatum !outValue (T.ValidatorRedeemerGetBackType !amount_
         && traceIfFalse "not isCorrect_Output_CampaignFunds_Datum_Value_Changed_With_GetBack"
             (validateGetBackValueChange vp outValue amount_CampaignToken amount_ADA)
         where
-            !amount_ADA = amount_CampaignToken * CampaignT.cdCampaignToken_PriceADA (vCampaignDatum vp)
+            !amount_ADA = calculateGetBackAmountADA vp amount_CampaignToken
+
+{-# INLINEABLE calculateGetBackAmountADA #-}
+calculateGetBackAmountADA :: ValidationParams -> Integer -> Integer
+calculateGetBackAmountADA !vp !amount_CampaignToken =
+    let
+        !datum = vCampaignDatum vp
+        !priceADA = CampaignT.cdCampaignToken_PriceADA datum
+        !funded = CampaignT.cdFundedADA datum
+        !collected = CampaignT.cdCollectedADA datum
+
+        !valuation = if funded == 0 then TxRatio.fromInteger 1 else TxRatio.fromInteger 1 - TxRatio.unsafeRatio collected funded
+        !priceRational = TxRatio.fromInteger priceADA
+        !finalPrice = valuation * priceRational
+
+        !totalRational = TxRatio.fromInteger amount_CampaignToken * finalPrice
+        !result = TxRatio.truncate totalRational
+    in result
 
 {-# INLINEABLE validateGetBackDatumUpdate #-}
 validateGetBackDatumUpdate :: ValidationParams -> T.CampaignFundsDatumType -> Integer -> Integer -> Bool

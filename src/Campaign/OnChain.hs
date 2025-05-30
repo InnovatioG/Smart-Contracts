@@ -170,8 +170,8 @@ validateRedeemer !vp !outDatum !outValue = case vRedeemer vp of
     T.ValidatorRedeemerInitializeCampaign _   -> validateStatusUpdate vp outDatum outValue
     T.ValidatorRedeemerReachedCampaign _      -> validateStatusUpdate vp outDatum outValue
     T.ValidatorRedeemerNotReachedCampaign _   -> validateStatusUpdate vp outDatum outValue
-    r@(T.ValidatorRedeemerMilestoneAprobe _)  -> validateMilestone vp outDatum outValue r
-    r@(T.ValidatorRedeemerMilestoneReprobe _) -> validateMilestone vp outDatum outValue r
+    r@(T.ValidatorRedeemerMilestoneApprove _) -> validateMilestone vp outDatum outValue r
+    r@(T.ValidatorRedeemerMilestoneFail _)  -> validateMilestone vp outDatum outValue r
     T.ValidatorRedeemerFundsCollect params    -> validateFundsCollect vp outDatum outValue params
     _                                         -> False
 
@@ -191,7 +191,10 @@ validateUpdate !vp !outDatum !outValue =
     -- Que el CampaignDatum regrese a Campaign Val (se hace automaticamente al buscar outputs en same address)
     -- no hay restricciones temporales
     ---------------------
-    validateProtocolOrCampaignAdmin vp
+    let
+        !mProtocolDatum = getProtocol_Datum vp
+    in
+    validateProtocolOrCampaignAdmin vp mProtocolDatum
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_Updated"
             (outDatum `OnChainHelpers.isUnsafeEqDatums`
              CampaignHelpers.mkUpdated_Campaign_Datum_With_NormalChanges
@@ -216,7 +219,7 @@ validateMinADAUpdate !vp !outDatum !outValue =
     -- Que el CampaignDatum value cambie con el min ADA nuevo
     -- no hay restricciones temporales
     ------------------
-    validateProtocolOrCampaignAdmin vp
+    validateProtocolOrCampaignAdmin vp mProtocolDatum
         && traceIfFalse "not min ADA > 0" (newMinADA > 0)
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_UpdatedMinADA"
             (outDatum `OnChainHelpers.isUnsafeEqDatums`
@@ -225,6 +228,7 @@ validateMinADAUpdate !vp !outDatum !outValue =
     where
         !newMinADA = T.cdMinADA outDatum
         !adaChange = newMinADA - T.cdMinADA (vDatum vp)
+        !mProtocolDatum = getProtocol_Datum vp
 
 
 --------------------------------------------------------------------------------
@@ -247,8 +251,8 @@ validateFundsAdd !vp !outDatum !outValue =
     -- que la poliza de Campaign Funds controle el mint de este NFT y controle el CampaignFundsDatum
     ------------------
     let !fundsPolicyCS = T.cdCampaignFundsPolicyID_CS $ vDatum vp
-    in traceIfFalse "not validateProtocolOrCampaignAdminAction"
-        (validateProtocolOrCampaignAdmin vp)
+        !mProtocolDatum = getProtocol_Datum vp
+    in validateProtocolOrCampaignAdmin vp mProtocolDatum
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_With_CampaignFundsAdded"
             (outDatum `OnChainHelpers.isUnsafeEqDatums`
              CampaignHelpers.mkUpdated_Campaign_Datum_With_CampaignFundsAdded (vDatum vp))
@@ -291,11 +295,11 @@ validateFundsMergeAndDelete !vp !outDatum !outValue =
             validateFundsOperation qty
         _ -> False
     where
+        !mProtocolDatum = getProtocol_Datum vp
         validateFundsOperation :: Integer -> Bool
         validateFundsOperation  !qty =
             let !fundsPolicyCS = T.cdCampaignFundsPolicyID_CS $ vDatum vp
-            in traceIfFalse "not validateProtocolOrCampaignAdminAction"
-                (validateProtocolOrCampaignAdmin vp)
+            in validateProtocolOrCampaignAdmin vp mProtocolDatum
                 && traceIfFalse "not isCorrect_Output_Campaign_Datum_With_CampaignFundsDeleted"
                     (outDatum `OnChainHelpers.isUnsafeEqDatums`
                     CampaignHelpers.mkUpdated_Campaign_Datum_With_CampaignFundsDeleted (vDatum vp) qty)
@@ -322,8 +326,8 @@ validateMilestone !vp !outDatum !outValue !redeemer =
     -- que el nuevo milestone actual este en status MsCreated
     ---------------------
     let !milestoneIndex = case redeemer of
-            T.ValidatorRedeemerMilestoneAprobe (T.ValidatorRedeemerMilestoneAprobeType idx)   -> idx
-            T.ValidatorRedeemerMilestoneReprobe (T.ValidatorRedeemerMilestoneReprobeType idx) -> idx
+            T.ValidatorRedeemerMilestoneApprove (T.ValidatorRedeemerMilestoneApproveType idx) -> idx
+            T.ValidatorRedeemerMilestoneFail (T.ValidatorRedeemerMilestoneFailType idx)       -> idx
             _                                                                                 -> traceError "Invalid milestone redeemer"
         !protocolDatum = getProtocol_Datum vp
     in validateProtocolAdminAction vp protocolDatum
@@ -334,7 +338,7 @@ validateMilestone !vp !outDatum !outValue !redeemer =
             (validateValueNotChanged vp outValue)
         && traceIfFalse "not isCampaignReached"
             (T.cdStatus (vDatum vp) == T.CsReached)
-        && traceIfFalse "not isPreviusMilestoneAprobed"
+        && traceIfFalse "not isPreviusMilestoneApproved"
             (validatePreviousMilestone vp milestoneIndex)
         && traceIfFalse "not isCurrentMilestoneCreated"
             (validateCurrentMilestone vp milestoneIndex)
@@ -350,12 +354,12 @@ isValidMilestoneIndex !vp !idx =
 validateMilestoneDatumUpdate :: ValidationParams -> T.CampaignDatumType -> Integer -> T.ValidatorRedeemer -> Bool
 validateMilestoneDatumUpdate !vp !outDatum !idx !redeemer =
     case redeemer of
-        T.ValidatorRedeemerMilestoneAprobe _ ->
+        T.ValidatorRedeemerMilestoneApprove _ ->
             outDatum `OnChainHelpers.isUnsafeEqDatums`
-            CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneAprobed (vDatum vp) idx
-        T.ValidatorRedeemerMilestoneReprobe _ ->
+            CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneApproved (vDatum vp) idx
+        T.ValidatorRedeemerMilestoneFail _ ->
             outDatum `OnChainHelpers.isUnsafeEqDatums`
-            CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneReprobed (vDatum vp) idx
+            CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneFailed (vDatum vp) idx
         _ -> False
 
 {-# INLINEABLE validatePreviousMilestone #-}
@@ -412,46 +416,50 @@ validateFundsCollect !vp !outDatum !outValue (T.ValidatorRedeemerFundsCollectTyp
              CampaignHelpers.mkUpdated_Campaign_Datum_With_CampaignFundsCollected (vDatum vp) amount)
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_Value_NotChanged"
             (validateValueNotChanged vp outValue)
-
+            
 {-# INLINEABLE getAvailableADA #-}
 getAvailableADA :: ValidationParams -> Integer
 getAvailableADA !vp =
-    let 
-        findCurrentMilestoneIndex :: Integer
-        findCurrentMilestoneIndex =
-            let !searchIndex = go 0 milestones
-                go !idx [] = idx
-                go !idx (m:ms)
-                    | T.cmStatus m /= T.MsSuccess = idx
-                    | otherwise = go (idx + 1) ms
-            in searchIndex
-        
-        calculateAvailableAmount :: Integer -> Integer
-        calculateAvailableAmount !currentIdx
-            | currentIdx >= length milestones = 0
-            | otherwise =
-                let !milestone = milestones !! currentIdx
-                in case T.cmStatus milestone of
-                    T.MsCreated ->
-                        let !percentage = calculatePercentage currentIdx
-                        in percentage * fundedADA `divide` 100
-                    _ -> 0
-
-        calculatePercentage :: Integer -> Integer
-        calculatePercentage !idx
-            | idx >= length milestones - 1 = 100
-            | otherwise = go 0 0
-            where
-                go !acc !i
-                    | i > idx = acc
-                    | otherwise = go (acc + T.cmPerncentage (milestones !! i)) (i + 1)
-
+    let
         !datum = vDatum vp
         !fundedADA = T.cdFundedADA datum
         !collectedADA = T.cdCollectedADA datum
         !milestones = T.cdMilestones datum
-        !currentMilestoneIndex = findCurrentMilestoneIndex
-        !availableAmount = calculateAvailableAmount currentMilestoneIndex
+
+        -- cuenta cuántos consecutivos están en MsSuccess
+        countSuccess :: Integer
+        countSuccess = go 0 milestones
+            where
+                go !i [] = i
+                go !i (m:ms) = case T.cmStatus m of
+                    T.MsSuccess -> go (i + 1) ms
+                    _           -> i
+
+        -- busca el primer milestone que no sea MsSuccess (si existe)
+        nextMilestone :: Maybe T.CampaignMilestones
+        nextMilestone = dropSuccess milestones
+            where
+                dropSuccess [] = Nothing
+                dropSuccess (m:ms) = case T.cmStatus m of
+                    T.MsSuccess -> dropSuccess ms
+                    _           -> Just m
+
+        -- permite cobrar solo si el siguiente milestone es MsCreated o no hay más
+        canCollect :: Bool
+        canCollect = case nextMilestone of
+            Nothing -> True
+            Just m -> case T.cmStatus m of
+                T.MsCreated -> True
+                _           -> False
+
+        -- suma los cmPercentage de los primeros N milestones
+        sumPercentages :: Integer -> [T.CampaignMilestones] -> Integer
+        sumPercentages n _ | n <= 0 = 0  -- Use <= 0 instead of == 0
+        sumPercentages _ [] = 0
+        sumPercentages n (m:ms) = T.cmPercentage m + sumPercentages (n - 1) ms
+
+        !unlockedPercentage = if canCollect then sumPercentages countSuccess milestones else 0
+        !availableAmount = unlockedPercentage * fundedADA `divide` 100
 
     in availableAmount - collectedADA
 
@@ -486,7 +494,7 @@ validateStatusUpdate :: ValidationParams -> T.CampaignDatumType -> Ledger.Value 
 validateStatusUpdate !vp !outDatum !outValue =
     let !protocolDatum = getProtocol_Datum vp
         !campaignFundsDatum = snd <$> getCampaignFunds vp
-    in case vRedeemer vp of 
+    in case vRedeemer vp of
         T.ValidatorRedeemerInitializeCampaign _ -> validateInitialize vp outDatum outValue protocolDatum campaignFundsDatum
         T.ValidatorRedeemerReachedCampaign _    -> validateReached vp outDatum outValue protocolDatum campaignFundsDatum
         T.ValidatorRedeemerNotReachedCampaign _ -> validateNotReached vp outDatum outValue protocolDatum campaignFundsDatum
@@ -544,10 +552,10 @@ validateReached !vp !outDatum !outValue !mProtocolDatum !campaignFundsDatum =
     -- tiene que tener en los CampaignFunds la cantidad de tokens necesarias vendidos, superando el minimo esperado
     -- que haya terminado la campaña
     ---------------------
-        validateProtocolAdminAction vp mProtocolDatum
+        validateProtocolOrCampaignAdmin vp  mProtocolDatum
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_Updated"
             (outDatum `OnChainHelpers.isUnsafeEqDatums`
-             CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusReached (vDatum vp) tokensToSold)
+             CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusReached (vDatum vp) fundedADA )
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_Value_NotChanged" (validateValueNotChanged vp outValue)
         && traceIfFalse "not isCampaignStatusInitialized" (isCampaignStatus vp T.CsInitialized)
         && traceIfFalse "not isAllCampaignFunds" (length campaignFundsDatum == T.cdFundsCount (vDatum vp))
@@ -556,13 +564,14 @@ validateReached !vp !outDatum !outValue !mProtocolDatum !campaignFundsDatum =
     where
          ---------------------
         !tokensToSold = sum (CampaignFundsT.cfdSubtotal_Sold_CampaignToken <$> campaignFundsDatum)
+        !fundedADA = tokensToSold * T.cdCampaignToken_PriceADA (vDatum vp)
         ---------------------
         isCampaignFundsTokensSold :: Bool
         !isCampaignFundsTokensSold =
             let
                 !requestedMinADA = T.cdRequestedMinADA (vDatum vp)
             in
-                requestedMinADA <= tokensToSold * T.cdCampaignToken_PriceADA (vDatum vp)
+                requestedMinADA <= fundedADA
 
 
 {-# INLINEABLE validateNotReached #-}
@@ -584,10 +593,10 @@ validateNotReached !vp !outDatum !outValue !mProtocolDatum !campaignFundsDatum =
     -- tiene que no tener en los CampaignFunds la cantidad de tokens minimos
     -- la fecha tiene que haber pasado al deadline
     ---------------------
-        validateProtocolAdminAction vp mProtocolDatum
+        validateProtocolOrCampaignAdmin vp mProtocolDatum
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_Updated"
             (outDatum `OnChainHelpers.isUnsafeEqDatums`
-             CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusNotReached (vDatum vp) tokensToSold)
+             CampaignHelpers.mkUpdated_Campaign_Datum_With_NewStatusNotReached (vDatum vp) fundedADA)
         && traceIfFalse "not isCorrect_Output_Campaign_Datum_Value_NotChanged" (validateValueNotChanged vp outValue)
         && traceIfFalse "not isCampaignStatusInitialized" (isCampaignStatus vp T.CsInitialized)
         && traceIfFalse "not isAllCampaignFunds" (length campaignFundsDatum == T.cdFundsCount (vDatum vp))
@@ -596,13 +605,14 @@ validateNotReached !vp !outDatum !outValue !mProtocolDatum !campaignFundsDatum =
     where
         ---------------------
         !tokensToSold = sum (CampaignFundsT.cfdSubtotal_Sold_CampaignToken <$> campaignFundsDatum)
+        !fundedADA = tokensToSold * T.cdCampaignToken_PriceADA (vDatum vp)
         ---------------------
         isCampaignFundsTokensNotSold :: Bool
         !isCampaignFundsTokensNotSold =
             let
                 !requestedMinADA = T.cdRequestedMinADA (vDatum vp)
             in
-                requestedMinADA > tokensToSold * T.cdCampaignToken_PriceADA (vDatum vp)
+                requestedMinADA > fundedADA
 
 --------------------------------------------------------------------------------
 -- Delete Validation Functions
@@ -665,10 +675,10 @@ getProtocol_Datum !vp =
             ProtocolT.getProtocol_DatumType
     in case protocolDatums of
         [(_,x)] -> Just x
-        _   -> Nothing
+        _       -> Nothing
 
 {-# INLINEABLE getCampaignFunds #-}
-getCampaignFunds :: ValidationParams -> [(LedgerContextsV2.TxOut, CampaignFundsT.CampaignFundsDatumType)] 
+getCampaignFunds :: ValidationParams -> [(LedgerContextsV2.TxOut, CampaignFundsT.CampaignFundsDatumType)]
 getCampaignFunds !vp  =
     let !refInputs = getRefInputs vp
         !campaignFundsID_CS = T.cdCampaignFundsPolicyID_CS $ vDatum vp
@@ -678,7 +688,7 @@ getCampaignFunds !vp  =
             (vCtx vp)
             refInputs
             campaignFundsID_CS
-            CampaignFundsT.getCampaignFunds_DatumType 
+            CampaignFundsT.getCampaignFunds_DatumType
     in case fundsDatums of
         [] -> traceError "Expected all CampaignFunds as inputRef"
         x  -> x
@@ -749,23 +759,22 @@ validateCampaignAdminAction !vp =
 
 {-# INLINEABLE validateProtocolAdminAction #-}
 validateProtocolAdminAction :: ValidationParams -> Maybe ProtocolT.ProtocolDatumType -> Bool
-validateProtocolAdminAction !vp !mprot =
-    let !admins = case mprot of
+validateProtocolAdminAction !vp !mProtocolDatum =
+    let !admins = case mProtocolDatum of
             Just protDatum -> T.getAdmins protDatum
-            _                   -> traceError "Expected Protocol at inputRef"
+            _              -> traceError "Expected Protocol at inputRef"
     in traceIfFalse "not isSignedByAny admins nor isAdminTokenPresent"
         (OnChainHelpers.isSignedByAny admins (vInfo vp) || isAdminTokenPresent vp)
 
 {-# INLINEABLE validateProtocolOrCampaignAdmin #-}
-validateProtocolOrCampaignAdmin :: ValidationParams -> Bool
-validateProtocolOrCampaignAdmin !vp =
+validateProtocolOrCampaignAdmin :: ValidationParams -> Maybe ProtocolT.ProtocolDatumType  -> Bool
+validateProtocolOrCampaignAdmin !vp !mProtocolDatum =
     ------------------
     -- Que este el token de admin presente
     -- o Que sea Campaign Admin
     -- o Que sea Protocol Admin si hay input ref protocol
     ------------------
-    let !protocolDatum = getProtocol_Datum vp
-        !admins = T.getAdmins (vDatum vp) ++ maybe [] T.getAdmins protocolDatum
+    let !admins = T.getAdmins (vDatum vp) ++ maybe [] T.getAdmins mProtocolDatum
     in traceIfFalse "not isSignedByAny admins nor isAdminTokenPresent"
         (OnChainHelpers.isSignedByAny admins (vInfo vp) || isAdminTokenPresent vp)
 
@@ -927,7 +936,7 @@ mkPolicy (T.PolicyParams !protocolPolicyID_CS !campaignPolicy_TxOutRef !campaign
                                 -- Check if requestedMaxADA and requestedMinADA are divisible by campaignToken_PriceADA
                                 divisibleMax = requestedMaxADA `modulo` campaignToken_PriceADA == 0
                                 -- divisibleMin = requestedMinADA `modulo` campaignToken_PriceADA == 0
-                                validRequestedPriceDivisibility = divisibleMax 
+                                validRequestedPriceDivisibility = divisibleMax
                                 -- Check valid milestones
                                 validateMilestones =
                                     let
@@ -936,7 +945,7 @@ mkPolicy (T.PolicyParams !protocolPolicyID_CS !campaignPolicy_TxOutRef !campaign
                                         -- Check if all milestones have status MsCreated
                                         allCreatedMilestones = all (\m -> T.cmStatus m == T.MsCreated) milestones
                                         -- Check if the total percentage of all milestones sums to 100
-                                        totalPercentage = sum [T.cmPerncentage m | m <- milestones]
+                                        totalPercentage = sum [T.cmPercentage m | m <- milestones]
                                         isValidPercentage = totalPercentage == 100
                                     in
                                         hasMilestones && allCreatedMilestones && isValidPercentage
