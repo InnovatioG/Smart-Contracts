@@ -33,10 +33,10 @@ import qualified Schema
 --------------------------------------------------------------------------------2
 
 import qualified Constants            as T
+import qualified Helpers.OnChain      as OnChainHelpers
 import qualified Helpers.Types        as T
+import qualified Protocol.Types       as ProtocolT
 import qualified Types                as T
-import qualified Helpers.OnChain as OnChainHelpers
-import qualified Protocol.Types as ProtocolT
 
 --------------------------------------------------------------------------------2
 -- Modulo
@@ -124,8 +124,8 @@ PlutusTx.makeIsDataIndexed ''MilestoneStatus [('MsCreated, 1), ('MsSuccess, 2), 
 
 data CampaignMilestones
     = CampaignMilestones
-          { cmPerncentage           :: Integer
-          , cmStatus                :: MilestoneStatus
+          { cmPercentage :: Integer
+          , cmStatus      :: MilestoneStatus
           }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Eq, P.Ord, P.Show)
 
@@ -133,7 +133,7 @@ instance Eq CampaignMilestones where
   {-# INLINABLE (==) #-}
   (==) :: CampaignMilestones -> CampaignMilestones -> Bool
   cm1 == cm2 =
-    cmPerncentage cm1 == cmPerncentage cm2
+    cmPercentage cm1 == cmPercentage cm2
         && cmStatus cm1 == cmStatus cm2
 
 PlutusTx.makeIsDataIndexed ''CampaignMilestones [('CampaignMilestones, 0)]
@@ -145,10 +145,10 @@ data CampaignDatumType
           , cdCampaignFundsPolicyID_CS :: T.CS
           , cdAdmins                   :: [T.WalletPaymentPKH]
           , cdTokenAdminPolicy_CS      :: LedgerApiV2.CurrencySymbol
-          , cdMint_CampaignToken          :: Bool
-          , cdCampaignToken_CS            :: T.CS
-          , cdCampaignToken_TN            :: T.TN
-          , cdCampaignToken_PriceADA      :: Integer
+          , cdMint_CampaignToken       :: Bool
+          , cdCampaignToken_CS         :: T.CS
+          , cdCampaignToken_TN         :: T.TN
+          , cdCampaignToken_PriceADA   :: Integer
           , cdRequestedMaxADA          :: Integer
           , cdRequestedMinADA          :: Integer
           , cdFundedADA                :: Integer
@@ -416,11 +416,11 @@ data PolicyRedeemer
 
 instance Eq PolicyRedeemer where
     {-# INLINABLE (==) #-}
-    PolicyRedeemerMintID rmtx1 == PolicyRedeemerMintID rmtx2 = rmtx1 == rmtx2
-    PolicyRedeemerBurnID rmtx1 == PolicyRedeemerBurnID rmtx2 = rmtx1 == rmtx2
+    PolicyRedeemerMintID rmtx1 == PolicyRedeemerMintID rmtx2                       = rmtx1 == rmtx2
+    PolicyRedeemerBurnID rmtx1 == PolicyRedeemerBurnID rmtx2                       = rmtx1 == rmtx2
     PolicyRedeemerMintCampaignToken rmtx1 == PolicyRedeemerMintCampaignToken rmtx2 = rmtx1 == rmtx2
     PolicyRedeemerBurnCampaignToken rmtx1 == PolicyRedeemerBurnCampaignToken rmtx2 = rmtx1 == rmtx2
-    _ == _                                                   = False
+    _ == _                                                                         = False
 
 PlutusTx.makeIsDataIndexed
     ''PolicyRedeemer
@@ -434,11 +434,11 @@ PlutusTx.makeIsDataIndexed
 --------------------------------------------------------------------------------2
 
 getPolicyRedeemerName :: Maybe PolicyRedeemer -> Maybe P.String
-getPolicyRedeemerName (Just (PolicyRedeemerMintID PolicyRedeemerMintIDType)) = Just "MintID"
-getPolicyRedeemerName (Just (PolicyRedeemerBurnID PolicyRedeemerBurnIDType)) = Just "BurnID"
+getPolicyRedeemerName (Just (PolicyRedeemerMintID PolicyRedeemerMintIDType))                       = Just "MintID"
+getPolicyRedeemerName (Just (PolicyRedeemerBurnID PolicyRedeemerBurnIDType))                       = Just "BurnID"
 getPolicyRedeemerName (Just (PolicyRedeemerMintCampaignToken PolicyRedeemerMintCampaignTokenType)) = Just "MintCampaignToken"
 getPolicyRedeemerName (Just (PolicyRedeemerBurnCampaignToken PolicyRedeemerBurnCampaignTokenType)) = Just "BurnCampaignToken"
-getPolicyRedeemerName _                                                      = Nothing
+getPolicyRedeemerName _                                                                            = Nothing
 
 --------------------------------------------------------------------------------22
 -- ValidatorRedeemer
@@ -505,9 +505,7 @@ PlutusTx.makeIsDataIndexed
 --------------------------------------------------------------------------------2
 
 newtype ValidatorRedeemerFundsCollectType
-    = ValidatorRedeemerFundsCollectType
-          { rfcAmount :: Integer
-          }
+    = ValidatorRedeemerFundsCollectType { rfcAmount :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
 instance Eq ValidatorRedeemerFundsCollectType where
@@ -557,29 +555,31 @@ PlutusTx.makeIsDataIndexed
 
 --------------------------------------------------------------------------------222
 
-newtype ValidatorRedeemerMilestoneAprobeType
-    = ValidatorRedeemerMilestoneAprobeType { rmaMilestoneIndex :: Integer }
+newtype ValidatorRedeemerMilestoneApproveType
+    = ValidatorRedeemerMilestoneApproveType { rmaMilestoneIndex :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
-instance Eq ValidatorRedeemerMilestoneAprobeType where
+instance Eq ValidatorRedeemerMilestoneApproveType where
     {-# INLINABLE (==) #-}
     r1 == r2 = r1 == r2
 
 PlutusTx.makeIsDataIndexed
-    ''ValidatorRedeemerMilestoneAprobeType
-    [('ValidatorRedeemerMilestoneAprobeType, 0)]
+    ''ValidatorRedeemerMilestoneApproveType
+    [('ValidatorRedeemerMilestoneApproveType, 0)]
+
 --------------------------------------------------------------------------------2
-newtype ValidatorRedeemerMilestoneReprobeType
-    = ValidatorRedeemerMilestoneReprobeType { rmrMilestoneIndex :: Integer }
+
+newtype ValidatorRedeemerMilestoneFailType
+    = ValidatorRedeemerMilestoneFailType { rmfMilestoneIndex :: Integer }
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
 
-instance Eq ValidatorRedeemerMilestoneReprobeType where
+instance Eq ValidatorRedeemerMilestoneFailType where
     {-# INLINABLE (==) #-}
     r1 == r2 = r1 == r2
 
 PlutusTx.makeIsDataIndexed
-    ''ValidatorRedeemerMilestoneReprobeType
-    [('ValidatorRedeemerMilestoneReprobeType, 0)]
+    ''ValidatorRedeemerMilestoneFailType
+    [('ValidatorRedeemerMilestoneFailType, 0)]
 
 --------------------------------------------------------------------------------2
 
@@ -615,8 +615,8 @@ data ValidatorRedeemer
     | ValidatorRedeemerInitializeCampaign ValidatorRedeemerInitializeCampaignType
     | ValidatorRedeemerReachedCampaign ValidatorRedeemerReachedCampaignType
     | ValidatorRedeemerNotReachedCampaign ValidatorRedeemerNotReachedCampaignType
-    | ValidatorRedeemerMilestoneAprobe ValidatorRedeemerMilestoneAprobeType
-    | ValidatorRedeemerMilestoneReprobe ValidatorRedeemerMilestoneReprobeType
+    | ValidatorRedeemerMilestoneApprove ValidatorRedeemerMilestoneApproveType
+    | ValidatorRedeemerMilestoneFail ValidatorRedeemerMilestoneFailType
     | ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType
     | ValidatorRedeemerDelete ValidatorRedeemerDeleteType
     deriving (DataAeson.FromJSON, DataAeson.ToJSON, GHCGenerics.Generic, P.Show)
@@ -636,9 +636,9 @@ instance Eq ValidatorRedeemer where
         rmcp1 == rmcp2
     ValidatorRedeemerInitializeCampaign rmcp1 == ValidatorRedeemerInitializeCampaign rmcp2 =
         rmcp1 == rmcp2
-    ValidatorRedeemerMilestoneAprobe rmcp1 == ValidatorRedeemerMilestoneAprobe rmcp2 =
+    ValidatorRedeemerMilestoneApprove rmcp1 == ValidatorRedeemerMilestoneApprove rmcp2 =
         rmcp1 == rmcp2
-    ValidatorRedeemerMilestoneReprobe rmcp1 == ValidatorRedeemerMilestoneReprobe rmcp2 =
+    ValidatorRedeemerMilestoneFail rmcp1 == ValidatorRedeemerMilestoneFail rmcp2 =
         rmcp1 == rmcp2
     ValidatorRedeemerEmergency rmcp1 == ValidatorRedeemerEmergency rmcp2                 = rmcp1 == rmcp2
     ValidatorRedeemerDelete rmcp1 == ValidatorRedeemerDelete rmcp2 =
@@ -656,28 +656,28 @@ PlutusTx.makeIsDataIndexed
     , ('ValidatorRedeemerInitializeCampaign, 9)
     , ('ValidatorRedeemerReachedCampaign, 10)
     , ('ValidatorRedeemerNotReachedCampaign, 11)
-    , ('ValidatorRedeemerMilestoneAprobe, 5)
-    , ('ValidatorRedeemerMilestoneReprobe, 6)
+    , ('ValidatorRedeemerMilestoneApprove, 5)
+    , ('ValidatorRedeemerMilestoneFail, 6)
     , ('ValidatorRedeemerEmergency, 7)
     , ('ValidatorRedeemerDelete, 8)
     ]
 --------------------------------------------------------------------------------2
 
 getValidatorRedeemerName :: Maybe ValidatorRedeemer -> Maybe P.String
-getValidatorRedeemerName (Just (ValidatorRedeemerDatumUpdate ValidatorRedeemerDatumUpdateType))             = Just "DatumUpdate"
-getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType))           = Just "UpdateMinADA"
-getValidatorRedeemerName (Just (ValidatorRedeemerFundsAdd ValidatorRedeemerFundsAddType))                   = Just "FundsAdd"
-getValidatorRedeemerName (Just (ValidatorRedeemerFundsMerge (ValidatorRedeemerFundsMergeType _)))           = Just "FundsMerge"
-getValidatorRedeemerName (Just (ValidatorRedeemerFundsDelete (ValidatorRedeemerFundsDeleteType _)))         = Just "FundsDelete"
-getValidatorRedeemerName (Just (ValidatorRedeemerFundsCollect (ValidatorRedeemerFundsCollectType _)))     = Just "FundsCollect"
+getValidatorRedeemerName (Just (ValidatorRedeemerDatumUpdate ValidatorRedeemerDatumUpdateType))               = Just "DatumUpdate"
+getValidatorRedeemerName (Just (ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType))             = Just "UpdateMinADA"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsAdd ValidatorRedeemerFundsAddType))                     = Just "FundsAdd"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsMerge (ValidatorRedeemerFundsMergeType _)))             = Just "FundsMerge"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsDelete (ValidatorRedeemerFundsDeleteType _)))           = Just "FundsDelete"
+getValidatorRedeemerName (Just (ValidatorRedeemerFundsCollect (ValidatorRedeemerFundsCollectType _)))         = Just "FundsCollect"
 getValidatorRedeemerName (Just (ValidatorRedeemerInitializeCampaign ValidatorRedeemerInitializeCampaignType)) = Just "InitializeCampaign"
-getValidatorRedeemerName (Just (ValidatorRedeemerReachedCampaign ValidatorRedeemerReachedCampaignType))     = Just "ReachedCampaign"
+getValidatorRedeemerName (Just (ValidatorRedeemerReachedCampaign ValidatorRedeemerReachedCampaignType))       = Just "ReachedCampaign"
 getValidatorRedeemerName (Just (ValidatorRedeemerNotReachedCampaign ValidatorRedeemerNotReachedCampaignType)) = Just "NotReachedCampaign"
-getValidatorRedeemerName (Just (ValidatorRedeemerMilestoneAprobe (ValidatorRedeemerMilestoneAprobeType _))) = Just "MilestoneAprobe"
-getValidatorRedeemerName (Just (ValidatorRedeemerMilestoneReprobe (ValidatorRedeemerMilestoneReprobeType _))) = Just "MilestoneReprobe"
+getValidatorRedeemerName (Just (ValidatorRedeemerMilestoneApprove (ValidatorRedeemerMilestoneApproveType _))) = Just "MilestoneApprove"
+getValidatorRedeemerName (Just (ValidatorRedeemerMilestoneFail (ValidatorRedeemerMilestoneFailType _)))       = Just "MilestoneFail"
 getValidatorRedeemerName (Just (ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType))                   = Just "Emergency"
 getValidatorRedeemerName (Just (ValidatorRedeemerDelete ValidatorRedeemerDeleteType))                         = Just "Delete"
-getValidatorRedeemerName _                                                                                  = Nothing
+getValidatorRedeemerName _                                                                                    = Nothing
 
 --------------------------------------------------------------------------------22
 
@@ -761,17 +761,17 @@ mkNotReachedCampaignRedeemer =
         LedgerApiV2.toBuiltinData $
             ValidatorRedeemerNotReachedCampaign ValidatorRedeemerNotReachedCampaignType
 
-mkMilestoneAprobeRedeemer :: Integer -> LedgerApiV2.Redeemer
-mkMilestoneAprobeRedeemer milestoneIndex =
+mkMilestoneApproveRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkMilestoneApproveRedeemer milestoneIndex =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
-            ValidatorRedeemerMilestoneAprobe $ ValidatorRedeemerMilestoneAprobeType milestoneIndex
+            ValidatorRedeemerMilestoneApprove $ ValidatorRedeemerMilestoneApproveType milestoneIndex
 
-mkMilestoneReprobeRedeemer :: Integer -> LedgerApiV2.Redeemer
-mkMilestoneReprobeRedeemer milestoneIndex =
+mkMilestoneFailRedeemer :: Integer -> LedgerApiV2.Redeemer
+mkMilestoneFailRedeemer milestoneIndex =
     LedgerApiV2.Redeemer $
         LedgerApiV2.toBuiltinData $
-            ValidatorRedeemerMilestoneReprobe $ ValidatorRedeemerMilestoneReprobeType milestoneIndex
+            ValidatorRedeemerMilestoneFail $ ValidatorRedeemerMilestoneFailType milestoneIndex
 
 mkEmergencyRedeemer :: LedgerApiV2.Redeemer
 mkEmergencyRedeemer =
