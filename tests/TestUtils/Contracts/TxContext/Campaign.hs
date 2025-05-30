@@ -19,8 +19,6 @@ import           PlutusTx.Prelude
 import qualified Helpers.OnChain          as OnChainHelpers
 import qualified Helpers.Types                   as T
 import qualified Constants              as T
-import qualified Protocol.Helpers       as ProtocolHelpers
-import qualified Protocol.Types         as ProtocolT
 import           TestUtils.Contracts.InitialData
 import           TestUtils.Helpers
 import           TestUtils.TestContext.Helpers
@@ -75,14 +73,14 @@ campaign_Delete_TxContext tp =
 --------------------------------------------------------------------------------
 
 campaign_DatumUpdate_TxContext :: TestParams -> [T.WalletPaymentPKH] -> LedgerApiV2.CurrencySymbol -> LedgerApiV2.ScriptContext
-campaign_DatumUpdate_TxContext tp admins tokenAdminPolicy_CS =
+campaign_DatumUpdate_TxContext tp admins tokenAdminPolicy_CS' =
     let
         input_Campaign_UTxO = campaign_UTxO_MockData tp
         input_Campaign_Datum = CampaignT.getCampaign_DatumType_From_UTxO input_Campaign_UTxO
         -----------------
         output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_NormalChanges
                 input_Campaign_Datum
-                admins tokenAdminPolicy_CS
+                admins tokenAdminPolicy_CS'
         output_Campaign_UTxO = input_Campaign_UTxO
             { LedgerApiV2.txOutDatum =
                 LedgerApiV2.OutputDatum $
@@ -251,8 +249,8 @@ campaign_NotReachedCampaign_TxContext tp =
 -- Campaign Milestone Approve
 --------------------------------------------------------------------------------
 
-campaign_MilestoneAprobe_TxContext :: TestParams -> Integer -> LedgerApiV2.ScriptContext
-campaign_MilestoneAprobe_TxContext tp milestoneIndex =
+campaign_MilestoneApprove_TxContext :: TestParams -> Integer -> LedgerApiV2.ScriptContext
+campaign_MilestoneApprove_TxContext tp milestoneIndex =
     let
         input_Campaign_UTxO' = campaign_UTxO_With_Added_CampaignFunds_MockData tp
         
@@ -263,7 +261,7 @@ campaign_MilestoneAprobe_TxContext tp milestoneIndex =
         input_Campaign_UTxO = input_Campaign_UTxO'
             { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum input_Campaign_Datum }
         
-        output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneAprobed
+        output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneApproved
             input_Campaign_Datum
             milestoneIndex
             
@@ -272,7 +270,7 @@ campaign_MilestoneAprobe_TxContext tp milestoneIndex =
     in
         mkContext
             |> setInputsRef [protocol_UTxO_MockData tp]
-            |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkMilestoneAprobeRedeemer milestoneIndex)]
+            |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkMilestoneApproveRedeemer milestoneIndex)]
             |> setOutputs [output_Campaign_UTxO]
             |> setSignatories (tpProtocolAdmins tp)
             |> setValidyRange (createValidRange (tpTransactionDate tp))
@@ -293,7 +291,7 @@ campaign_MilestoneReprobe_TxContext tp milestoneIndex =
         input_Campaign_UTxO = input_Campaign_UTxO'
             { LedgerApiV2.txOutDatum = LedgerApiV2.OutputDatum $ CampaignT.mkDatum input_Campaign_Datum }
         
-        output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneReprobed
+        output_Campaign_Datum = CampaignHelpers.mkUpdated_Campaign_Datum_With_MilestoneFailed
             input_Campaign_Datum
             milestoneIndex
             
@@ -302,7 +300,7 @@ campaign_MilestoneReprobe_TxContext tp milestoneIndex =
     in
         mkContext
             |> setInputsRef [protocol_UTxO_MockData tp]
-            |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkMilestoneReprobeRedeemer milestoneIndex)]
+            |> setInputsAndAddRedeemers [(input_Campaign_UTxO, CampaignT.mkMilestoneFailRedeemer milestoneIndex)]
             |> setOutputs [output_Campaign_UTxO]
             |> setSignatories (tpProtocolAdmins tp)
             |> setValidyRange (createValidRange (tpTransactionDate tp))

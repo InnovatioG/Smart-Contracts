@@ -1,5 +1,4 @@
 
-
 # Redeemers
 
 ## Campaign
@@ -9,7 +8,6 @@ data PolicyRedeemer
     | PolicyRedeemerBurnID PolicyRedeemerBurnIDType
     | PolicyRedeemerMintCampaignToken PolicyRedeemerMintCampaignTokenType
     | PolicyRedeemerBurnCampaignToken PolicyRedeemerBurnCampaignTokenType
-
 
 data ValidatorRedeemer
     = ValidatorRedeemerDatumUpdate ValidatorRedeemerDatumUpdateType
@@ -21,7 +19,7 @@ data ValidatorRedeemer
     | ValidatorRedeemerInitializeCampaign ValidatorRedeemerInitializeCampaignType
     | ValidatorRedeemerReachedCampaign ValidatorRedeemerReachedCampaignType
     | ValidatorRedeemerNotReachedCampaign ValidatorRedeemerNotReachedCampaignType
-    | ValidatorRedeemerMilestoneAprobe ValidatorRedeemerMilestoneAprobeType
+    | ValidatorRedeemerMilestoneApprove ValidatorRedeemerMilestoneApproveType
     | ValidatorRedeemerMilestoneReprobe ValidatorRedeemerMilestoneReprobeType
     | ValidatorRedeemerEmergency ValidatorRedeemerEmergencyType
     | ValidatorRedeemerDelete ValidatorRedeemerDeleteType
@@ -31,7 +29,6 @@ data ValidatorRedeemer
 data PolicyRedeemer
     = PolicyRedeemerMintID PolicyRedeemerMintIDType
     | PolicyRedeemerBurnID PolicyRedeemerBurnIDType
-
 
 data ValidatorRedeemer
     = ValidatorRedeemerUpdateMinADA ValidatorRedeemerUpdateMinADAType
@@ -59,6 +56,3 @@ data PolicyRedeemer
     | PolicyRedeemerBurnID PolicyRedeemerBurnIDType
 
 type ValidatorRedeemer = ValidatorRedeemerDelete
-
-
-

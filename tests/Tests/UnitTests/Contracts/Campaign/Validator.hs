@@ -17,27 +17,18 @@ module Contracts.Campaign.Validator where
 --------------------------------------------------------------------------------4
 
 -- Non-IOG imports
-import           Prelude                            (show)
-import qualified Test.Tasty                         as Tasty
-import qualified Test.Tasty.HUnit                   as Tasty
+import           Prelude                                (show)
+import qualified Test.Tasty                             as Tasty
+import qualified Test.Tasty.HUnit                       as Tasty
 
 -- IOG imports
-import qualified Ledger.Ada                         as LedgerAda
-import qualified Ledger.Address                     as LedgerAddress
-import qualified Plutus.V2.Ledger.Api               as LedgerApiV2
 import           PlutusTx.Prelude
 
 -- Project imports
-import qualified Helpers.OffChain            as OffChainHelpers
-import qualified Constants                      as T
-import qualified Campaign.Funds.Types        as CampaignFundsT
-import qualified Campaign.Types                as CampaignT
 import           TestUtils.Contracts.InitialData
 import           TestUtils.Contracts.TxContext.Campaign
 import           TestUtils.HelpersINNOVATIO
 import           TestUtils.TestContext.Asserts
-import           TestUtils.TestContext.Helpers
-import           TestUtils.Types
 import           TestUtils.TypesINNOVATIO
 
 --------------------------------------------------------------------------------
@@ -55,7 +46,7 @@ campaign_Validator_Tests tp =
         , campaign_Validator_Redeemer_InitializeCampaign_Tests tp
         , campaign_Validator_Redeemer_ReachedCampaign_Tests tp
         , campaign_Validator_Redeemer_NotReachedCampaign_Tests tp
-        , campaign_Validator_Redeemer_MilestoneAprobe_Tests tp
+        , campaign_Validator_Redeemer_MilestoneApprove_Tests tp
         , campaign_Validator_Redeemer_MilestoneReprobe_Tests tp
         -- , campaign_Validator_Redeemer_Emergency_Tests tp
         , campaign_Validator_Redeemer_Delete_Tests tp
@@ -420,18 +411,18 @@ campaign_Validator_Redeemer_NotReachedCampaign_Tests tp =
 
 --------------------------------------------------------------------------------
 
-campaign_Validator_Redeemer_MilestoneAprobe_Tests :: TestParams -> Tasty.TestTree
-campaign_Validator_Redeemer_MilestoneAprobe_Tests tp =
+campaign_Validator_Redeemer_MilestoneApprove_Tests :: TestParams -> Tasty.TestTree
+campaign_Validator_Redeemer_MilestoneApprove_Tests tp =
     let
         ------------------------
-        txName = show Campaign_MilestoneAprobe_Tx
-        selectedRedeemer = RedeemerLogValidator (Just Campaign_MilestoneAprobe_TestRedeemer)
+        txName = show Campaign_MilestoneApprove_Tx
+        selectedRedeemer = RedeemerLogValidator (Just Campaign_MilestoneApprove_TestRedeemer)
         redeemerName = getRedeemerNameFromLog selectedRedeemer
         ------------------------
     in
         Tasty.testGroup ("TX NAME: " ++ txName ++ " - REDEEMER: " ++ redeemerName ++ " - Tests") $
                 let
-                    ctx = campaign_MilestoneAprobe_TxContext tp 0 -- Testing first milestone
+                    ctx = campaign_MilestoneApprove_TxContext tp 0 -- Testing first milestone
                 in
                     [
                         Tasty.testCase "Approve milestone correctly must succeed" $ do

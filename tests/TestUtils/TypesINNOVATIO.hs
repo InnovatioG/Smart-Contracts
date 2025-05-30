@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
 
 --------------------------------------------------------------------------------3
@@ -9,22 +8,18 @@ module TestUtils.TypesINNOVATIO where
 
 --------------------------------------------------------------------------------
 -- Non-IOG imports
-import qualified Control.Monad.IO.Class  as MonadIO
-import qualified Control.Monad.Reader    as MReader
 import qualified Data.List               as DataList
 import           Prelude                 as P
 import qualified Text.Read               as TextRead
 
 -- IOG imports
 import qualified Ledger
-import qualified Ledger.Address          as LedgerAddress
 import qualified Plutus.V2.Ledger.Api    as LedgerApiV2
 import qualified PlutusTx
 import qualified Wallet.Emulator.Types   as WalletEmulatorTypes (XPrv)
 
 -- Project imports
 import qualified Helpers.Types           as T
-import qualified Protocol.Types as ProtocolT
 import           TestUtils.Types
 import qualified Campaign.Types as CampaignT
 
@@ -122,7 +117,7 @@ data ValidatorTestRedeemer =
   Campaign_InitializeCampaign_TestRedeemer  |
   Campaign_ReachedCampaign_TestRedeemer  |
   Campaign_NotReachedCampaign_TestRedeemer  |
-  Campaign_MilestoneAprobe_TestRedeemer  |
+  Campaign_MilestoneApprove_TestRedeemer  |
   Campaign_MilestoneReprobe_TestRedeemer  |
   Campaign_Emergency_TestRedeemer  |
   Campaign_Delete_TestRedeemer  |
@@ -169,7 +164,7 @@ data TestTransactions =
   Campaign_InitializeCampaign_Tx  |
   Campaign_ReachedCampaign_Tx  |
   Campaign_NotReachedCampaign_Tx  |
-  Campaign_MilestoneAprobe_Tx  |
+  Campaign_MilestoneApprove_Tx  |
   Campaign_MilestoneReprobe_Tx  |
   Campaign_Emergency_Tx  |
   Campaign_Delete_Tx  |
